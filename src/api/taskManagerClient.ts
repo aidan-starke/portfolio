@@ -83,11 +83,22 @@ export const taskApi = {
     id: string,
     task: Partial<CreateTaskDto>
   ): Promise<void> => {
-    await fetch(`${TASK_API}/api/tasks/${id}`, {
+    const priorityMap = { Low: 0, Medium: 1, High: 2, Critical: 3 };
+    const requestBody = {
+      ...task,
+      priority: task.priority ? priorityMap[task.priority] : undefined,
+    };
+
+    const response = await fetch(`${TASK_API}/api/tasks/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(task),
+      body: JSON.stringify(requestBody),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || `Failed to update task: ${response.statusText}`);
+    }
   },
 
   completeTask: async (id: string): Promise<void> => {

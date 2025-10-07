@@ -9,9 +9,16 @@ type PromptState =
   | { type: "create-description" }
   | { type: "create-priority" }
   | { type: "create-tags" }
+  | { type: "create-duedate" }
   | { type: "view-id" }
   | { type: "complete-index" }
-  | { type: "delete-index" };
+  | { type: "delete-index" }
+  | { type: "update-id" }
+  | { type: "update-field" }
+  | { type: "update-value" }
+  | { type: "update-priority" }
+  | { type: "search-term" }
+  | { type: "filter-priority" };
 
 export default function TaskManager() {
   const [output, setOutput] = useState<string[]>([
@@ -29,7 +36,17 @@ export default function TaskManager() {
     description: "",
     priority: "Medium" as TaskPriority,
     tags: "",
+    dueDate: "",
   });
+
+  // Update task state
+  const [updateTaskId, setUpdateTaskId] = useState("");
+  const [updateField, setUpdateField] = useState("");
+  const [updatePriority, setUpdatePriority] = useState<TaskPriority>("Medium");
+
+  // Search/filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterPriority, setFilterPriority] = useState<TaskPriority>("Low");
 
   const outputEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,15 +67,27 @@ export default function TaskManager() {
   }, [tasks]);
 
   const createTaskMutation = useMutation({
-    mutationFn: () =>
-      taskApi.createTask({
+    mutationFn: () => {
+      // Parse DD-MM-YY format to Date (UTC)
+      let dueDate: Date | undefined;
+      if (taskForm.dueDate) {
+        const [day, month, year] = taskForm.dueDate.split("-");
+        if (day && month && year) {
+          const fullYear = parseInt(year) + 2000; // Convert YY to YYYY
+          dueDate = new Date(Date.UTC(fullYear, parseInt(month) - 1, parseInt(day)));
+        }
+      }
+
+      return taskApi.createTask({
         title: taskForm.title,
         priority: taskForm.priority,
         description: taskForm.description || undefined,
         tags: taskForm.tags
           ? taskForm.tags.split(",").map((t) => t.trim())
           : [],
-      }),
+        dueDate,
+      });
+    },
     onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       addOutput("");
@@ -129,6 +158,7 @@ export default function TaskManager() {
       description: "",
       priority: "Medium",
       tags: "",
+      dueDate: "",
     });
     addOutput("What would you like to do?");
   };
@@ -138,7 +168,9 @@ export default function TaskManager() {
     "List All Tasks",
     "View Task by ID",
     "Complete Task",
+    "Update Task",
     "Delete Task",
+    "Search Tasks",
     "Filter Tasks",
     "Clear",
   ];
@@ -215,12 +247,52 @@ export default function TaskManager() {
           addOutput("Add tags? (comma-separated, press Enter to skip):");
           setPromptState({ type: "create-tags" });
         }
+      } else if (promptState.type === "update-priority") {
+        const priorities: TaskPriority[] = [
+          "Low",
+          "Medium",
+          "High",
+          "Critical",
+        ];
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          const currentIdx = priorities.indexOf(updatePriority);
+          const newIdx =
+            e.key === "ArrowDown"
+              ? (currentIdx + 1) % priorities.length
+              : (currentIdx - 1 + priorities.length) % priorities.length;
+          setUpdatePriority(priorities[newIdx]);
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          addOutput(updatePriority);
+          handleUpdateTask(updateTaskId, updateField, updatePriority);
+        }
+      } else if (promptState.type === "filter-priority") {
+        const priorities: TaskPriority[] = [
+          "Low",
+          "Medium",
+          "High",
+          "Critical",
+        ];
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          const currentIdx = priorities.indexOf(filterPriority);
+          const newIdx =
+            e.key === "ArrowDown"
+              ? (currentIdx + 1) % priorities.length
+              : (currentIdx - 1 + priorities.length) % priorities.length;
+          setFilterPriority(priorities[newIdx]);
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          addOutput(filterPriority);
+          handleFilterTasks(filterPriority);
+        }
       }
     };
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [promptState, menuIndex, taskForm.priority]);
+  }, [promptState, menuIndex, taskForm.priority, updatePriority, filterPriority]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,6 +325,15 @@ export default function TaskManager() {
 
       case "create-tags":
         setTaskForm({ ...taskForm, tags: input });
+        if (input) addOutput(input);
+        addOutput("");
+        addOutput("Add Due Date (DD-MM-YY, press Enter to skip):");
+        setInput("");
+        setPromptState({ type: "create-duedate" });
+        break;
+
+      case "create-duedate":
+        setTaskForm({ ...taskForm, dueDate: input });
         if (input) addOutput(input);
         addOutput("");
         addOutput("Creating task...");
@@ -290,6 +371,68 @@ export default function TaskManager() {
         handleDeleteTask(parseInt(input));
         setInput("");
         break;
+
+      case "update-id":
+        if (!input.trim()) {
+          addOutput("");
+          addOutput("[red]✗[/] Task ID required");
+          addOutput("");
+          resetToMenu();
+          return;
+        }
+        addOutput(input);
+        const updateNumeric = parseInt(input);
+        const updateId =
+          !isNaN(updateNumeric) && taskIndexMap[updateNumeric]
+            ? taskIndexMap[updateNumeric]
+            : input;
+        setUpdateTaskId(updateId);
+        addOutput("");
+        addOutput("What would you like to update? (title/description/priority/tags/duedate):");
+        setInput("");
+        setPromptState({ type: "update-field" });
+        break;
+
+      case "update-field":
+        if (!["title", "description", "priority", "tags", "duedate"].includes(input.toLowerCase())) {
+          addOutput("[red]✗[/] Invalid field. Choose: title, description, priority, tags, or duedate");
+          addOutput("");
+          resetToMenu();
+          return;
+        }
+        addOutput(input);
+        setUpdateField(input.toLowerCase());
+        addOutput("");
+
+        if (input.toLowerCase() === "priority") {
+          addOutput("Select Priority (use ↑↓ arrows):");
+          setInput("");
+          setPromptState({ type: "update-priority" });
+        } else {
+          addOutput(`Enter new ${input.toLowerCase()}:`);
+          setInput("");
+          setPromptState({ type: "update-value" });
+        }
+        break;
+
+      case "update-value":
+        addOutput(input);
+        handleUpdateTask(updateTaskId, updateField, input);
+        setInput("");
+        break;
+
+      case "search-term":
+        if (!input.trim()) {
+          addOutput("[red]✗[/] Search term required");
+          addOutput("");
+          resetToMenu();
+          return;
+        }
+        addOutput(input);
+        setSearchTerm(input);
+        handleSearchTasks(input);
+        setInput("");
+        break;
     }
   };
 
@@ -324,6 +467,13 @@ export default function TaskManager() {
         });
         break;
 
+      case "Update Task":
+        displayTasks().then(() => {
+          addOutput("Enter task ID to update:");
+          setPromptState({ type: "update-id" });
+        });
+        break;
+
       case "Delete Task":
         displayTasks().then(() => {
           addOutput("Enter task ID to delete:");
@@ -331,10 +481,14 @@ export default function TaskManager() {
         });
         break;
 
+      case "Search Tasks":
+        addOutput("Enter search term:");
+        setPromptState({ type: "search-term" });
+        break;
+
       case "Filter Tasks":
-        addOutput("[yellow]Coming soon...[/]");
-        addOutput("");
-        resetToMenu();
+        addOutput("Select priority to filter by (use ↑↓ arrows):");
+        setPromptState({ type: "filter-priority" });
         break;
 
       case "Clear":
@@ -443,6 +597,120 @@ export default function TaskManager() {
     deleteTaskMutation.mutate(tasks[taskIdx].id);
   };
 
+  const handleUpdateTask = async (id: string, field: string, value: string) => {
+    try {
+      // Get the existing task first
+      const task = await taskApi.getTask(id);
+
+      const updateData: any = {
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        tags: task.tags,
+        dueDate: task.dueDate,
+      };
+
+      if (field === "title") {
+        updateData.title = value;
+      } else if (field === "description") {
+        updateData.description = value || null;
+      } else if (field === "priority") {
+        const validPriorities = ["low", "medium", "high", "critical"];
+        if (!validPriorities.includes(value.toLowerCase())) {
+          addOutput("[red]✗[/] Invalid priority. Use: Low, Medium, High, or Critical");
+          addOutput("");
+          resetToMenu();
+          return;
+        }
+        updateData.priority = (value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()) as TaskPriority;
+      } else if (field === "tags") {
+        updateData.tags = value ? value.split(",").map((t) => t.trim()) : [];
+      } else if (field === "duedate") {
+        if (value) {
+          const [day, month, year] = value.split("-");
+          if (day && month && year) {
+            const fullYear = parseInt(year) + 2000; // Convert YY to YYYY
+            updateData.dueDate = new Date(Date.UTC(fullYear, parseInt(month) - 1, parseInt(day)));
+          } else {
+            addOutput("[red]✗[/] Invalid date format. Use DD-MM-YY");
+            addOutput("");
+            resetToMenu();
+            return;
+          }
+        } else {
+          updateData.dueDate = null;
+        }
+      }
+
+      await taskApi.updateTask(id, updateData);
+      await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      addOutput("");
+      addOutput("[green]✓[/] Task updated successfully.");
+      addOutput("");
+      resetToMenu();
+    } catch (error) {
+      addOutput("");
+      addOutput(`[red]✗[/] Error: ${error instanceof Error ? error.message : String(error)}`);
+      addOutput("");
+      resetToMenu();
+    }
+  };
+
+  const handleSearchTasks = async (term: string) => {
+    try {
+      // Since we don't have a search endpoint, filter locally
+      const filtered = tasks.filter(
+        (task) =>
+          task.title.toLowerCase().includes(term.toLowerCase()) ||
+          (task.description && task.description.toLowerCase().includes(term.toLowerCase()))
+      );
+
+      addOutput("");
+      if (filtered.length === 0) {
+        addOutput("[yellow]No tasks found matching your search.[/]");
+      } else {
+        addOutput(`Found ${filtered.length} task(s):`);
+        addOutput("");
+        filtered.forEach((task, idx) => {
+          const status = task.isCompleted ? "✓" : "○";
+          addOutput(`${idx + 1}. ${status} ${task.title} (${task.priority})`);
+        });
+      }
+      addOutput("");
+      resetToMenu();
+    } catch (error) {
+      addOutput("");
+      addOutput(`[red]✗[/] Error: ${error instanceof Error ? error.message : String(error)}`);
+      addOutput("");
+      resetToMenu();
+    }
+  };
+
+  const handleFilterTasks = async (priority: TaskPriority) => {
+    try {
+      const filtered = tasks.filter((task) => task.priority === priority);
+
+      addOutput("");
+      if (filtered.length === 0) {
+        addOutput(`[yellow]No ${priority} priority tasks found.[/]`);
+      } else {
+        addOutput(`Found ${filtered.length} ${priority} priority task(s):`);
+        addOutput("");
+        filtered.forEach((task, idx) => {
+          const status = task.isCompleted ? "✓" : "○";
+          addOutput(`${idx + 1}. ${status} ${task.title}`);
+        });
+      }
+      addOutput("");
+      resetToMenu();
+    } catch (error) {
+      addOutput("");
+      addOutput(`[red]✗[/] Error: ${error instanceof Error ? error.message : String(error)}`);
+      addOutput("");
+      resetToMenu();
+    }
+  };
+
   const formatLine = (line: string) => {
     // Parse Spectre.Console-style markup
     let formatted = line;
@@ -544,9 +812,47 @@ export default function TaskManager() {
             </div>
           )}
 
+          {/* Update Priority Selection */}
+          {promptState.type === "update-priority" && (
+            <div className="mt-2">
+              {(["Low", "Medium", "High", "Critical"] as const).map((p) => (
+                <div
+                  key={p}
+                  className={
+                    p === updatePriority
+                      ? "bg-green-500 pl-2 text-black"
+                      : "pl-2 text-gray-400"
+                  }
+                >
+                  {p === updatePriority ? ">" : " "} {p}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Filter Priority Selection */}
+          {promptState.type === "filter-priority" && (
+            <div className="mt-2">
+              {(["Low", "Medium", "High", "Critical"] as const).map((p) => (
+                <div
+                  key={p}
+                  className={
+                    p === filterPriority
+                      ? "bg-green-500 pl-2 text-black"
+                      : "pl-2 text-gray-400"
+                  }
+                >
+                  {p === filterPriority ? ">" : " "} {p}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Command Input */}
           {promptState.type !== "menu" &&
-            promptState.type !== "create-priority" && (
+            promptState.type !== "create-priority" &&
+            promptState.type !== "update-priority" &&
+            promptState.type !== "filter-priority" && (
               <form onSubmit={handleSubmit} className="mt-2 flex items-center">
                 <ChevronRight className="mr-2 h-4 w-4 text-green-400" />
                 <input
