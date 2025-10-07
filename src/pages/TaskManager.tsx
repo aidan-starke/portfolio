@@ -215,6 +215,16 @@ export default function TaskManager() {
   // Add global keyboard handler
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Escape key cancels and returns to menu
+      if (e.key === "Escape" && promptState.type !== "menu") {
+        e.preventDefault();
+        addOutput("");
+        addOutput("[yellow]Cancelled[/]");
+        addOutput("");
+        resetToMenu();
+        return;
+      }
+
       if (promptState.type === "menu") {
         if (e.key === "ArrowDown") {
           e.preventDefault();
@@ -904,7 +914,12 @@ export default function TaskManager() {
         {promptState.type === "menu" &&
           "Use ↑↓ arrows to navigate, Enter to select"}
         {promptState.type === "create-priority" &&
-          "Use ↑↓ arrows to select priority, Enter to confirm"}
+          "Use ↑↓ arrows to select priority, Enter to confirm, Esc to cancel"}
+        {promptState.type !== "menu" &&
+          promptState.type !== "create-priority" &&
+          promptState.type !== "update-priority" &&
+          promptState.type !== "filter-priority" &&
+          "Press Esc to cancel"}
       </div>
     </div>
   );
