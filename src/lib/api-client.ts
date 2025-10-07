@@ -17,23 +17,38 @@ export async function fetchJson<T>(
   schema: z.ZodSchema<T>,
   options?: RequestInit
 ): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    throw new ApiError(
-      errorData?.message || `HTTP ${response.status}: ${response.statusText}`,
-      response.status,
-      errorData
-    );
+    if (!response.ok) {
+      const text = await response.text();
+      console.log("not ok", text);
+      const errorData = await response.json().catch(() => null);
+      throw new ApiError(
+        errorData?.message || `HTTP ${response.status}: ${response.statusText}`,
+        response.status,
+        errorData
+      );
+    }
+
+    const data = await response.json();
+    const parsed = schema.safeParse(data);
+
+    if (!parsed.success) {
+      console.error("Schema validation failed:", parsed.error);
+      console.error("Received data:", data);
+      throw new Error(`Schema validation failed: ${parsed.error.message}`);
+    }
+
+    return parsed.data;
+  } catch (error) {
+    console.error("fetchJson error:", error);
+    throw error;
   }
-
-  const data = await response.json();
-  return schema.parse(data);
 }

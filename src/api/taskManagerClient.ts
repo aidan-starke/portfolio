@@ -1,15 +1,22 @@
 import { z } from "zod";
 import { fetchJson } from "../lib/api-client";
 
-const TASK_API = import.meta.env.VITE_TASK_API_URL || "http://localhost:5000";
+const TASK_API =
+  import.meta.env.VITE_TASK_API_URL || "http://100.99.137.30:5000";
 
 export const TaskPrioritySchema = z.enum(["Low", "Medium", "High", "Critical"]);
+
+// API returns priority as number (0=Low, 1=Medium, 2=High, 3=Critical)
+const PriorityNumberSchema = z.number().transform((val) => {
+  const priorities = ["Low", "Medium", "High", "Critical"];
+  return priorities[val] as "Low" | "Medium" | "High" | "Critical";
+});
 
 export const TaskItemSchema = z.object({
   id: z.uuid(),
   title: z.string(),
   description: z.string().nullable(),
-  priority: TaskPrioritySchema,
+  priority: PriorityNumberSchema,
   tags: z.array(z.string()),
   createdAt: z.coerce.date(),
   dueDate: z.coerce.date().nullable(),
@@ -46,38 +53,52 @@ export interface FilterTasksParams {
 
 export const taskApi = {
   getTasks: async (): Promise<TaskItem[]> => {
-    return fetchJson(`${TASK_API}/tasks`, TaskListSchema);
+    return fetchJson(`${TASK_API}/api/tasks`, TaskListSchema);
   },
 
   getTask: async (id: string): Promise<TaskItem> => {
-    return fetchJson(`${TASK_API}/tasks/${id}`, TaskItemSchema);
+    return fetchJson(`${TASK_API}/api/tasks/${id}`, TaskItemSchema);
   },
 
   createTask: async (task: CreateTaskDto): Promise<string> => {
-    return fetchJson(`${TASK_API}/tasks`, TaskIdSchema, {
-      method: "POST",
-      body: JSON.stringify(task),
-    });
+    // Convert priority string to number for API
+    const priorityMap = { Low: 0, Medium: 1, High: 2, Critical: 3 };
+    const requestBody = {
+      ...task,
+      priority: priorityMap[task.priority],
+    };
+
+    const response = await fetchJson<{ id: string }>(
+      `${TASK_API}/api/tasks`,
+      z.object({ id: z.string() }),
+      {
+        method: "POST",
+        body: JSON.stringify(requestBody),
+      }
+    );
+    return response.id;
   },
 
   updateTask: async (
     id: string,
     task: Partial<CreateTaskDto>
   ): Promise<void> => {
-    return fetchJson(`${TASK_API}/tasks/${id}`, z.void(), {
+    await fetch(`${TASK_API}/api/tasks/${id}`, {
       method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(task),
     });
   },
 
   completeTask: async (id: string): Promise<void> => {
-    return fetchJson(`${TASK_API}/tasks/${id}/complete`, z.void(), {
+    await fetch(`${TASK_API}/api/tasks/${id}/complete`, {
       method: "PUT",
+      headers: { "Content-Type": "application/json" },
     });
   },
 
   deleteTask: async (id: string): Promise<void> => {
-    return fetchJson(`${TASK_API}/tasks/${id}`, z.void(), {
+    await fetch(`${TASK_API}/api/tasks/${id}`, {
       method: "DELETE",
     });
   },
@@ -93,6 +114,6 @@ export const taskApi = {
         }
       }
     });
-    return fetchJson(`${TASK_API}/tasks/filter?${query}`, TaskListSchema);
+    return fetchJson(`${TASK_API}/api/tasks/filter?${query}`, TaskListSchema);
   },
 };
