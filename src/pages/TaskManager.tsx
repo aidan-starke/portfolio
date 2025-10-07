@@ -1,46 +1,76 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { taskApi } from "@/api/taskManagerClient";
+import { taskApi, type TaskPriority } from "@/api/taskManagerClient";
 import { Terminal, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
+type PromptState =
+  | { type: "menu" }
+  | { type: "create-title" }
+  | { type: "create-description" }
+  | { type: "create-priority" }
+  | { type: "create-tags" }
+  | { type: "view-id" }
+  | { type: "complete-index" }
+  | { type: "delete-index" };
 
 export default function TaskManager() {
-  const [command, setCommand] = useState("");
   const [output, setOutput] = useState<string[]>([
     "TaskManager CLI v1.0.0",
-    "Type 'help' for available commands",
     "",
+    "What would you like to do?",
   ]);
+  const [promptState, setPromptState] = useState<PromptState>({ type: "menu" });
+  const [input, setInput] = useState("");
+  const [menuIndex, setMenuIndex] = useState(0);
+
+  // Create task form data
+  const [taskForm, setTaskForm] = useState({
+    title: "",
+    description: "",
+    priority: "Medium" as TaskPriority,
+    tags: "",
+  });
+
+  const outputEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const queryClient = useQueryClient();
 
-  const { data: tasks = [], isLoading, error, refetch } = useQuery({
+  const { data: tasks = [], refetch } = useQuery({
     queryKey: ["tasks"],
     queryFn: () => taskApi.getTasks(),
-    retry: false,
   });
+
+  const taskIndexMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    tasks.forEach((task, idx) => {
+      map[idx + 1] = task.id;
+    });
+    return map;
+  }, [tasks]);
 
   const createTaskMutation = useMutation({
-    mutationFn: (data: { title: string; priority: string }) =>
+    mutationFn: () =>
       taskApi.createTask({
-        title: data.title,
-        priority: data.priority as "Low" | "Medium" | "High" | "Critical",
-        tags: [],
+        title: taskForm.title,
+        priority: taskForm.priority,
+        description: taskForm.description || undefined,
+        tags: taskForm.tags
+          ? taskForm.tags.split(",").map((t) => t.trim())
+          : [],
       }),
-    onSuccess: () => {
+    onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      addOutput("Task created successfully");
+      addOutput("");
+      addOutput(`[green]✓[/] Task created with ID: ${id}`);
+      addOutput("");
+      resetToMenu();
     },
     onError: (error) => {
-      addOutput(`Error: ${error.message}`);
-    },
-  });
-
-  const deleteTaskMutation = useMutation({
-    mutationFn: (id: string) => taskApi.deleteTask(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      addOutput("Task deleted successfully");
+      addOutput("");
+      addOutput(`[red]✗[/] Error: ${error.message}`);
+      addOutput("");
+      resetToMenu();
     },
   });
 
@@ -48,100 +78,406 @@ export default function TaskManager() {
     mutationFn: (id: string) => taskApi.completeTask(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      addOutput("Task completed");
+      addOutput("");
+      addOutput("[green]✓[/] Task marked as completed.");
+      addOutput("");
+      resetToMenu();
+    },
+    onError: (error) => {
+      addOutput("");
+      addOutput(`[red]✗[/] Error: ${error.message}`);
+      addOutput("");
+      resetToMenu();
     },
   });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: (id: string) => taskApi.deleteTask(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      addOutput("");
+      addOutput("[green]✓[/] Task deleted successfully.");
+      addOutput("");
+      resetToMenu();
+    },
+    onError: (error) => {
+      addOutput("");
+      addOutput(`[red]✗[/] Error: ${error.message}`);
+      addOutput("");
+      resetToMenu();
+    },
+  });
+
+  useEffect(() => {
+    outputEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [output]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [promptState]);
 
   const addOutput = (text: string) => {
     setOutput((prev) => [...prev, text]);
   };
 
-  const handleCommand = async (e: React.FormEvent) => {
+  const resetToMenu = () => {
+    setPromptState({ type: "menu" });
+    setMenuIndex(0);
+    setInput("");
+    setTaskForm({
+      title: "",
+      description: "",
+      priority: "Medium",
+      tags: "",
+    });
+    addOutput("What would you like to do?");
+  };
+
+  const menuOptions = [
+    "Create Task",
+    "List All Tasks",
+    "View Task by ID",
+    "Complete Task",
+    "Delete Task",
+    "Filter Tasks",
+    "Clear",
+  ];
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (promptState.type === "menu") {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMenuIndex((prev) => (prev + 1) % menuOptions.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMenuIndex(
+          (prev) => (prev - 1 + menuOptions.length) % menuOptions.length
+        );
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleMenuSelect(menuOptions[menuIndex]);
+      }
+    } else if (promptState.type === "create-priority") {
+      const priorities: TaskPriority[] = ["Low", "Medium", "High", "Critical"];
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const currentIdx = priorities.indexOf(taskForm.priority);
+        const newIdx =
+          e.key === "ArrowDown"
+            ? (currentIdx + 1) % priorities.length
+            : (currentIdx - 1 + priorities.length) % priorities.length;
+        setTaskForm({ ...taskForm, priority: priorities[newIdx] });
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        addOutput(taskForm.priority);
+        addOutput("");
+        addOutput("Add tags? (comma-separated, press Enter to skip):");
+        setPromptState({ type: "create-tags" });
+      }
+    }
+  };
+
+  // Add global keyboard handler
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (promptState.type === "menu") {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setMenuIndex((prev) => (prev + 1) % menuOptions.length);
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setMenuIndex(
+            (prev) => (prev - 1 + menuOptions.length) % menuOptions.length
+          );
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          handleMenuSelect(menuOptions[menuIndex]);
+        }
+      } else if (promptState.type === "create-priority") {
+        const priorities: TaskPriority[] = [
+          "Low",
+          "Medium",
+          "High",
+          "Critical",
+        ];
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          const currentIdx = priorities.indexOf(taskForm.priority);
+          const newIdx =
+            e.key === "ArrowDown"
+              ? (currentIdx + 1) % priorities.length
+              : (currentIdx - 1 + priorities.length) % priorities.length;
+          setTaskForm({ ...taskForm, priority: priorities[newIdx] });
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          addOutput(taskForm.priority);
+          addOutput("");
+          addOutput("Add tags? (comma-separated, press Enter to skip):");
+          setPromptState({ type: "create-tags" });
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [promptState, menuIndex, taskForm.priority]);
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!command.trim()) return;
 
-    addOutput(`$ ${command}`);
-
-    const [cmd, ...args] = command.trim().split(" ");
-
-    switch (cmd.toLowerCase()) {
-      case "help":
-        addOutput("Available commands:");
-        addOutput("  list                    - List all tasks");
-        addOutput("  add <title> [priority]  - Add a new task (priority: low|medium|high|critical)");
-        addOutput("  complete <index>        - Mark task as complete");
-        addOutput("  delete <index>          - Delete a task");
-        addOutput("  clear                   - Clear terminal output");
-        addOutput("  help                    - Show this help message");
-        break;
-
-      case "list":
-        const { data: freshTasks } = await refetch();
-        const taskList = freshTasks || [];
-        if (taskList.length === 0) {
-          addOutput("No tasks found");
-        } else {
-          addOutput(`Found ${taskList.length} task(s):\n`);
-          taskList.forEach((task, idx) => {
-            const status = task.isCompleted ? "[✓]" : "[ ]";
-            const priority = `[${task.priority.toUpperCase()}]`;
-            addOutput(`${idx + 1}. ${status} ${priority} ${task.title}`);
-          });
+    switch (promptState.type) {
+      case "create-title":
+        if (!input.trim()) {
+          addOutput("");
+          addOutput("[red]✗[/] Task title required");
+          addOutput("");
+          resetToMenu();
+          return;
         }
+        setTaskForm({ ...taskForm, title: input });
+        addOutput(input);
+        addOutput("");
+        addOutput("Add Description? (press Enter to skip):");
+        setInput("");
+        setPromptState({ type: "create-description" });
         break;
 
-      case "add":
-        if (args.length === 0) {
-          addOutput("Error: Task title required");
-          addOutput("Usage: add <title> [priority]");
-        } else {
-          const priority = args[args.length - 1];
-          const validPriorities = ["low", "medium", "high", "critical"];
-          let taskPriority = "Medium";
-          let title = args.join(" ");
+      case "create-description":
+        setTaskForm({ ...taskForm, description: input });
+        if (input) addOutput(input);
+        addOutput("");
+        addOutput("Select Priority (use ↑↓ arrows):");
+        setInput("");
+        setPromptState({ type: "create-priority" });
+        break;
 
-          if (validPriorities.includes(priority.toLowerCase())) {
-            taskPriority = priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase();
-            title = args.slice(0, -1).join(" ");
-          }
+      case "create-tags":
+        setTaskForm({ ...taskForm, tags: input });
+        if (input) addOutput(input);
+        addOutput("");
+        addOutput("Creating task...");
+        setInput("");
+        createTaskMutation.mutate();
+        break;
 
-          createTaskMutation.mutate({ title, priority: taskPriority });
+      case "view-id":
+        if (!input.trim()) {
+          addOutput("");
+          addOutput("[red]✗[/] Task ID required");
+          addOutput("");
+          resetToMenu();
+          return;
         }
+        addOutput(input);
+        // Check if input is a number (index) or UUID
+        const numericInput = parseInt(input);
+        const taskId =
+          !isNaN(numericInput) && taskIndexMap[numericInput]
+            ? taskIndexMap[numericInput]
+            : input;
+        handleViewTask(taskId);
+        setInput("");
         break;
 
-      case "complete":
-        const completeIdx = parseInt(args[0]) - 1;
-        if (isNaN(completeIdx) || completeIdx < 0 || completeIdx >= tasks.length) {
-          addOutput("Error: Invalid task index");
-        } else {
-          completeTaskMutation.mutate(tasks[completeIdx].id);
-        }
+      case "complete-index":
+        addOutput(input);
+        handleCompleteTask(parseInt(input));
+        setInput("");
         break;
 
-      case "delete":
-        const deleteIdx = parseInt(args[0]) - 1;
-        if (isNaN(deleteIdx) || deleteIdx < 0 || deleteIdx >= tasks.length) {
-          addOutput("Error: Invalid task index");
-        } else {
-          deleteTaskMutation.mutate(tasks[deleteIdx].id);
-        }
+      case "delete-index":
+        addOutput(input);
+        handleDeleteTask(parseInt(input));
+        setInput("");
+        break;
+    }
+  };
+
+  const handleMenuSelect = (choice: string) => {
+    // Clear current menu display
+    setOutput((prev) => prev.slice(0, -menuOptions.length - 1));
+    addOutput(`> ${choice}`);
+    addOutput("");
+
+    switch (choice) {
+      case "Create Task":
+        addOutput("Task Title:");
+        setPromptState({ type: "create-title" });
         break;
 
-      case "clear":
+      case "List All Tasks":
+        displayTasks();
+        resetToMenu();
+        break;
+
+      case "View Task by ID":
+        displayTasks().then(() => {
+          addOutput("Enter task ID:");
+          setPromptState({ type: "view-id" });
+        });
+        break;
+
+      case "Complete Task":
+        displayTasks().then(() => {
+          addOutput("Enter task ID to complete:");
+          setPromptState({ type: "complete-index" });
+        });
+        break;
+
+      case "Delete Task":
+        displayTasks().then(() => {
+          addOutput("Enter task ID to delete:");
+          setPromptState({ type: "delete-index" });
+        });
+        break;
+
+      case "Filter Tasks":
+        addOutput("[yellow]Coming soon...[/]");
+        addOutput("");
+        resetToMenu();
+        break;
+
+      case "Clear":
         setOutput([]);
+        resetToMenu();
         break;
+    }
+  };
 
-      default:
-        addOutput(`Command not found: ${cmd}`);
-        addOutput("Type 'help' for available commands");
+  const displayTasks = async () => {
+    const { data: freshTasks } = await refetch();
+    const taskList = freshTasks || [];
+
+    if (taskList.length === 0) {
+      addOutput("[yellow]No tasks found.[/]");
+      addOutput("");
+      return;
     }
 
+    addOutput(`Found ${taskList.length} task(s):`);
     addOutput("");
-    setCommand("");
+    taskList.forEach((task, idx) => {
+      const status = task.isCompleted ? "✓" : "○";
+      addOutput(`${idx + 1}. ${status} ${task.title} (${task.priority})`);
+    });
+    addOutput("");
+  };
+
+  const handleViewTask = async (id: string) => {
+    try {
+      const task = await taskApi.getTask(id);
+      const width = 69;
+
+      const pad = (text: string, extraLength = 0) => {
+        const remaining = width - text.length + extraLength;
+        return text + "\u00A0".repeat(Math.max(0, remaining));
+      };
+
+      const statusText = task.isCompleted
+        ? "[green]Completed ✓[/]"
+        : "[grey]Incomplete ○[/]";
+      const statusMarkupLength = task.isCompleted
+        ? "[green][/]".length
+        : "[grey][/]".length;
+
+      addOutput("");
+      addOutput(
+        "╭──────────────────────────────────────────────────────────────────────╮"
+      );
+      addOutput(`│ ${pad("Task: " + task.id)}│`);
+      addOutput(
+        "├──────────────────────────────────────────────────────────────────────┤"
+      );
+      addOutput(`│ ${pad("Title: " + task.title)}│`);
+      addOutput(`│ ${pad("Description: " + (task.description || "N/A"))}│`);
+      addOutput(`│ ${pad("Priority: " + task.priority)}│`);
+      addOutput(`│ ${pad("Status: " + statusText, statusMarkupLength)}│`);
+      addOutput(
+        `│ ${pad("Tags: " + (task.tags.length ? task.tags.join(", ") : "None"))}│`
+      );
+      addOutput(
+        `│ ${pad("Due Date: " + (task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "N/A"))}│`
+      );
+      addOutput(
+        `│ ${pad("Created At: " + new Date(task.createdAt).toLocaleString())}│`
+      );
+      addOutput(
+        "╰──────────────────────────────────────────────────────────────────────╯"
+      );
+      addOutput("");
+      resetToMenu();
+    } catch (error) {
+      console.error("View task error:", error);
+      addOutput("");
+      addOutput(
+        `[red]✗[/] Task not found: ${error instanceof Error ? error.message : String(error)}`
+      );
+      addOutput("");
+      resetToMenu();
+    }
+  };
+
+  const handleCompleteTask = (idx: number) => {
+    const taskIdx = idx - 1;
+    if (isNaN(taskIdx) || taskIdx < 0 || taskIdx >= tasks.length) {
+      addOutput("");
+      addOutput("[red]✗[/] Invalid task index");
+      addOutput("");
+      resetToMenu();
+      return;
+    }
+    addOutput("");
+    completeTaskMutation.mutate(tasks[taskIdx].id);
+  };
+
+  const handleDeleteTask = (idx: number) => {
+    const taskIdx = idx - 1;
+    if (isNaN(taskIdx) || taskIdx < 0 || taskIdx >= tasks.length) {
+      addOutput("");
+      addOutput("[red]✗[/] Invalid task index");
+      addOutput("");
+      resetToMenu();
+      return;
+    }
+    addOutput("");
+    deleteTaskMutation.mutate(tasks[taskIdx].id);
+  };
+
+  const formatLine = (line: string) => {
+    // Parse Spectre.Console-style markup
+    let formatted = line;
+    let className = "text-gray-300";
+
+    if (line.startsWith(">")) {
+      className = "text-cyan-400";
+    } else if (line.includes("[green]") || line.startsWith("✓")) {
+      className = "text-green-400";
+      formatted = line.replace(/\[green\]/g, "").replace(/\[\/\]/g, "");
+    } else if (line.includes("[red]") || line.startsWith("✗")) {
+      className = "text-red-400";
+      formatted = line.replace(/\[red\]/g, "").replace(/\[\/\]/g, "");
+    } else if (line.includes("[yellow]")) {
+      className = "text-yellow-400";
+      formatted = line.replace(/\[yellow\]/g, "").replace(/\[\/\]/g, "");
+    } else if (line.includes("[grey]")) {
+      className = "text-gray-500";
+      formatted = line.replace(/\[grey\]/g, "").replace(/\[\/\]/g, "");
+    } else if (
+      line.startsWith("│") ||
+      line.startsWith("╭") ||
+      line.startsWith("╰") ||
+      line.startsWith("├")
+    ) {
+      className = "text-blue-400";
+    } else if (line.includes("○") || line.includes("✓")) {
+      className = "text-gray-300";
+    }
+
+    return { formatted, className };
   };
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex items-center gap-3">
         <Terminal className="h-8 w-8 text-green-500" />
         <h1 className="text-3xl font-bold">TaskManager CLI</h1>
@@ -162,90 +498,78 @@ export default function TaskManager() {
         </div>
 
         {/* Terminal Output */}
-        <div className="h-[500px] overflow-y-auto p-4 font-mono text-sm">
-          {isLoading && (
-            <div className="text-green-400">Loading tasks...</div>
-          )}
-          {error && (
-            <div className="text-red-400">
-              Error: {error instanceof Error ? error.message : "Failed to fetch tasks"}
+        <div className="h-[600px] overflow-y-auto p-4 font-mono text-sm">
+          {output.map((line, idx) => {
+            const { formatted, className } = formatLine(line);
+            return (
+              <div key={idx} className={className}>
+                {formatted}
+              </div>
+            );
+          })}
+
+          {/* Menu Selection */}
+          {promptState.type === "menu" && (
+            <div className="mt-2">
+              {menuOptions.map((option, idx) => (
+                <div
+                  key={option}
+                  className={
+                    idx === menuIndex
+                      ? "bg-green-500 pl-2 text-black"
+                      : "pl-2 text-gray-400"
+                  }
+                >
+                  {idx === menuIndex ? ">" : " "} {option}
+                </div>
+              ))}
             </div>
           )}
-          {output.map((line, idx) => (
-            <div
-              key={idx}
-              className={
-                line.startsWith("$")
-                  ? "text-blue-400"
-                  : line.startsWith("Error")
-                    ? "text-red-400"
-                    : line.includes("[✓]")
-                      ? "text-green-400"
-                      : "text-gray-300"
-              }
-            >
-              {line}
+
+          {/* Priority Selection */}
+          {promptState.type === "create-priority" && (
+            <div className="mt-2">
+              {(["Low", "Medium", "High", "Critical"] as const).map((p) => (
+                <div
+                  key={p}
+                  className={
+                    p === taskForm.priority
+                      ? "bg-green-500 pl-2 text-black"
+                      : "pl-2 text-gray-400"
+                  }
+                >
+                  {p === taskForm.priority ? ">" : " "} {p}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
 
           {/* Command Input */}
-          <form onSubmit={handleCommand} className="mt-2 flex items-center">
-            <ChevronRight className="mr-2 h-4 w-4 text-green-400" />
-            <input
-              type="text"
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-              className="flex-1 bg-transparent font-mono text-green-400 outline-none placeholder:text-gray-600"
-              placeholder="Enter command..."
-              autoFocus
-            />
-          </form>
+          {promptState.type !== "menu" &&
+            promptState.type !== "create-priority" && (
+              <form onSubmit={handleSubmit} className="mt-2 flex items-center">
+                <ChevronRight className="mr-2 h-4 w-4 text-green-400" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="flex-1 bg-transparent font-mono text-green-400 outline-none"
+                  autoFocus
+                />
+              </form>
+            )}
+
+          <div ref={outputEndRef} />
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setCommand("list");
-            handleCommand({ preventDefault: () => {} } as any);
-          }}
-          className="font-mono"
-        >
-          list
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCommand("add ")}
-          className="font-mono"
-        >
-          add task
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setCommand("help");
-            handleCommand({ preventDefault: () => {} } as any);
-          }}
-          className="font-mono"
-        >
-          help
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setCommand("clear");
-            handleCommand({ preventDefault: () => {} } as any);
-          }}
-          className="font-mono"
-        >
-          clear
-        </Button>
+      <div className="mt-4 font-mono text-sm text-gray-500">
+        {promptState.type === "menu" &&
+          "Use ↑↓ arrows to navigate, Enter to select"}
+        {promptState.type === "create-priority" &&
+          "Use ↑↓ arrows to select priority, Enter to confirm"}
       </div>
     </div>
   );
