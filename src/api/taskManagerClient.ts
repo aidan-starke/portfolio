@@ -1,9 +1,9 @@
-import { z } from 'zod';
-import { fetchJson } from '../lib/api-client';
+import { z } from "zod";
+import { fetchJson } from "../lib/api-client";
 
-const TASK_API = import.meta.env.VITE_TASK_API_URL || 'http://localhost:5000';
+const TASK_API = import.meta.env.VITE_TASK_API_URL || "http://localhost:5000";
 
-export const TaskPrioritySchema = z.enum(['Low', 'Medium', 'High', 'Critical']);
+export const TaskPrioritySchema = z.enum(["Low", "Medium", "High", "Critical"]);
 
 export const TaskItemSchema = z.object({
   id: z.uuid(),
@@ -40,7 +40,7 @@ export interface FilterTasksParams {
   tags?: string[];
   dueBefore?: string;
   dueAfter?: string;
-  sortBy?: 'Title' | 'Priority' | 'DueDate' | 'CreatedAt' | 'IsCompleted';
+  sortBy?: "Title" | "Priority" | "DueDate" | "CreatedAt" | "IsCompleted";
   sortDescending?: boolean;
 }
 
@@ -55,7 +55,7 @@ export const taskApi = {
 
   createTask: async (task: CreateTaskDto): Promise<string> => {
     return fetchJson(`${TASK_API}/tasks`, TaskIdSchema, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(task),
     });
   },
@@ -65,20 +65,20 @@ export const taskApi = {
     task: Partial<CreateTaskDto>
   ): Promise<void> => {
     return fetchJson(`${TASK_API}/tasks/${id}`, z.void(), {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(task),
     });
   },
 
   completeTask: async (id: string): Promise<void> => {
     return fetchJson(`${TASK_API}/tasks/${id}/complete`, z.void(), {
-      method: 'PUT',
+      method: "PUT",
     });
   },
 
   deleteTask: async (id: string): Promise<void> => {
     return fetchJson(`${TASK_API}/tasks/${id}`, z.void(), {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 

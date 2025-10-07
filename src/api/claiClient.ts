@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { fetchJson } from '../lib/api-client';
+import { z } from "zod";
+import { fetchJson } from "../lib/api-client";
 
-const CLAI_API = import.meta.env.VITE_CLAI_API_URL || 'http://localhost:3500';
+const CLAI_API = import.meta.env.VITE_CLAI_API_URL || "http://localhost:3500";
 
 export const SessionSchema = z.object({
   id: z.number().int(),
@@ -61,14 +61,14 @@ export const claiApi = {
 
   createSession: async (session: CreateSessionDto): Promise<Session> => {
     return fetchJson(`${CLAI_API}/sessions`, SessionSchema, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(session),
     });
   },
 
   deleteSession: async (id: number): Promise<void> => {
     return fetchJson(`${CLAI_API}/sessions/${id}`, z.void(), {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
@@ -80,7 +80,7 @@ export const claiApi = {
       `${CLAI_API}/sessions/${sessionId}/chat`,
       ChatResponseSchema,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ message }),
       }
     );
@@ -88,7 +88,7 @@ export const claiApi = {
 
   setRole: async (sessionId: number, role: string | null): Promise<void> => {
     return fetchJson(`${CLAI_API}/sessions/${sessionId}/role`, z.void(), {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({ role }),
     });
   },
@@ -103,7 +103,7 @@ export const claiApi = {
 
   setModel: async (sessionId: number, model: string): Promise<void> => {
     return fetchJson(`${CLAI_API}/sessions/${sessionId}/model`, z.void(), {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({ model }),
     });
   },

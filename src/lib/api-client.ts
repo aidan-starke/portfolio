@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export class ApiError extends Error {
   status: number;
@@ -6,7 +6,7 @@ export class ApiError extends Error {
 
   constructor(message: string, status: number, data?: unknown) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
     this.status = status;
     this.data = data;
   }
@@ -20,7 +20,7 @@ export async function fetchJson<T>(
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
   });

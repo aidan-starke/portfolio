@@ -1,14 +1,14 @@
-import { Link, useLocation } from 'wouter';
-import { Button } from '@/components/ui/button';
-import { Code2, ListTodo, MessageSquare } from 'lucide-react';
+import { Link, useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Code2, ListTodo, MessageSquare } from "lucide-react";
 
 export default function Navigation() {
   const [location] = useLocation();
 
   const links = [
-    { path: '/', label: 'Home', icon: Code2 },
-    { path: '/tasks', label: 'Task Manager', icon: ListTodo },
-    { path: '/chat', label: 'CLAI Chat', icon: MessageSquare },
+    { path: "/", label: "Home", icon: Code2 },
+    { path: "/tasks", label: "Task Manager", icon: ListTodo },
+    { path: "/chat", label: "CLAI Chat", icon: MessageSquare },
   ];
 
   return (
@@ -23,7 +23,7 @@ export default function Navigation() {
             {links.map(({ path, label, icon: Icon }) => (
               <Button
                 key={path}
-                variant={location === path ? 'default' : 'ghost'}
+                variant={location === path ? "default" : "ghost"}
                 size="sm"
                 asChild
               >

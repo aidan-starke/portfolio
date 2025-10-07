@@ -1,9 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Route, Switch } from 'wouter';
-import Layout from './components/layout/Layout';
-import Home from './pages/Home';
-import TaskManager from './pages/TaskManager';
-import ClaiChat from './pages/ClaiChat';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Route, Switch } from "wouter";
+import Layout from "./components/layout/Layout";
+import Home from "./pages/Home";
+import TaskManager from "./pages/TaskManager";
+import ClaiChat from "./pages/ClaiChat";
 
 const queryClient = new QueryClient({
   defaultOptions: {

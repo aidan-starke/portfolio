@@ -1,4 +1,4 @@
-import { Link } from 'wouter';
+import { Link } from "wouter";
 import {
   Card,
   CardContent,
@@ -6,9 +6,9 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Code2, Terminal } from 'lucide-react';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Code2, Terminal } from "lucide-react";
 
 export default function Home() {
   return (
@@ -27,7 +27,7 @@ export default function Home() {
         <ProjectCard
           title="Task Manager"
           description="A comprehensive task management system built with C# and Clean Architecture, featuring CQRS, MediatR, and comprehensive testing."
-          tech={['C#', 'ASP.NET Core', 'Clean Architecture', 'CQRS', 'xUnit']}
+          tech={["C#", "ASP.NET Core", "Clean Architecture", "CQRS", "xUnit"]}
           icon={Code2}
           link="/tasks"
         />
@@ -35,7 +35,7 @@ export default function Home() {
         <ProjectCard
           title="CLAI Chat"
           description="A command-line AI chat client built in Rust with a client-server architecture, featuring session management and Claude AI integration."
-          tech={['Rust', 'Axum', 'SeaORM', 'Tokio', 'SQLite']}
+          tech={["Rust", "Axum", "SeaORM", "Tokio", "SQLite"]}
           icon={Terminal}
           link="/chat"
         />
