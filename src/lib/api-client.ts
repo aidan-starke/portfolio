@@ -27,8 +27,6 @@ export async function fetchJson<T>(
     });
 
     if (!response.ok) {
-      const text = await response.text();
-      console.log("not ok", text);
       const errorData = await response.json().catch(() => null);
       throw new ApiError(
         errorData?.message || `HTTP ${response.status}: ${response.statusText}`,
@@ -37,7 +35,13 @@ export async function fetchJson<T>(
       );
     }
 
-    const data = await response.json();
+    // Handle empty responses (e.g., 204 No Content or empty PUT/DELETE responses)
+    const text = await response.text();
+    if (!text) {
+      return schema.parse(undefined);
+    }
+
+    const data = JSON.parse(text);
     const parsed = schema.safeParse(data);
 
     if (!parsed.success) {

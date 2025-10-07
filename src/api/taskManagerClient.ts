@@ -89,29 +89,31 @@ export const taskApi = {
       priority: task.priority ? priorityMap[task.priority] : undefined,
     };
 
-    const response = await fetch(`${TASK_API}/api/tasks/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.message || `Failed to update task: ${response.statusText}`);
-    }
+    await fetchJson(
+      `${TASK_API}/api/tasks/${id}`,
+      z.void(),
+      {
+        method: "PUT",
+        body: JSON.stringify(requestBody),
+      }
+    );
   },
 
-  completeTask: async (id: string): Promise<void> => {
-    await fetch(`${TASK_API}/api/tasks/${id}/complete`, {
+  completeTask: async (id: string, isCompleted: boolean): Promise<void> => {
+    await fetchJson(`${TASK_API}/api/tasks/${id}/complete`, z.void(), {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isCompleted }),
     });
   },
 
   deleteTask: async (id: string): Promise<void> => {
-    await fetch(`${TASK_API}/api/tasks/${id}`, {
-      method: "DELETE",
-    });
+    await fetchJson(
+      `${TASK_API}/api/tasks/${id}`,
+      z.void(),
+      {
+        method: "DELETE",
+      }
+    );
   },
 
   filterTasks: async (params: FilterTasksParams): Promise<TaskItem[]> => {

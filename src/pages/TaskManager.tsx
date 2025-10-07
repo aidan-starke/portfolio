@@ -104,11 +104,14 @@ export default function TaskManager() {
   });
 
   const completeTaskMutation = useMutation({
-    mutationFn: (id: string) => taskApi.completeTask(id),
-    onSuccess: () => {
+    mutationFn: ({ id, isCompleted }: { id: string; isCompleted: boolean }) =>
+      taskApi.completeTask(id, isCompleted),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       addOutput("");
-      addOutput("[green]✓[/] Task marked as completed.");
+      addOutput(variables.isCompleted
+        ? "[green]✓[/] Task marked as completed."
+        : "[green]✓[/] Task marked as incomplete.");
       addOutput("");
       resetToMenu();
     },
@@ -593,8 +596,10 @@ export default function TaskManager() {
       resetToMenu();
       return;
     }
+    const task = tasks[taskIdx];
     addOutput("");
-    completeTaskMutation.mutate(tasks[taskIdx].id);
+    // Toggle completion status
+    completeTaskMutation.mutate({ id: task.id, isCompleted: !task.isCompleted });
   };
 
   const handleDeleteTask = (idx: number) => {
