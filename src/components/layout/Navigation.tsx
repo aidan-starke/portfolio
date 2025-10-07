@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Code2, ListTodo, MessageSquare } from "lucide-react";
+import { Code2, ListTodo, MessageSquare, FileText } from "lucide-react";
 
 export default function Navigation() {
   const [location] = useLocation();
@@ -9,6 +9,7 @@ export default function Navigation() {
     { path: "/", label: "Home", icon: Code2 },
     { path: "/tasks", label: "Task Manager", icon: ListTodo },
     { path: "/chat", label: "CLAI Chat", icon: MessageSquare },
+    { path: "/cv", label: "CV", icon: FileText },
   ];
 
   return (

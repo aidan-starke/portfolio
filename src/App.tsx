@@ -4,6 +4,7 @@ import Layout from "./components/layout/Layout";
 import Home from "./pages/Home";
 import TaskManager from "./pages/TaskManager";
 import ClaiChat from "./pages/ClaiChat";
+import CV from "./pages/CV";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,6 +23,7 @@ function App() {
           <Route path="/" component={Home} />
           <Route path="/tasks" component={TaskManager} />
           <Route path="/chat" component={ClaiChat} />
+          <Route path="/cv" component={CV} />
           <Route>404 - Not Found</Route>
         </Switch>
       </Layout>

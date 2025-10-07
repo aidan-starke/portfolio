@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Code2, Terminal } from "lucide-react";
+import { ArrowRight, Code2, Terminal, FileText } from "lucide-react";
 
 export default function Home() {
   return (
@@ -18,12 +18,13 @@ export default function Home() {
           Welcome to My Portfolio
         </h1>
         <p className="text-muted-foreground mx-auto max-w-2xl text-lg">
-          Explore two full-stack projects: a Task Manager built with C# and
-          Clean Architecture, and CLAI, a Rust-powered CLI chat application.
+          Explore my projects: a Task Manager built with C# and Clean
+          Architecture, CLAI a Rust-powered CLI chat application, and my
+          interactive CV.
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <ProjectCard
           title="Task Manager"
           description="A comprehensive task management system built with C# and Clean Architecture, featuring CQRS, MediatR, and comprehensive testing."
@@ -39,6 +40,15 @@ export default function Home() {
           icon={Terminal}
           link="/chat"
         />
+
+        <ProjectCard
+          title="CV"
+          description="An interactive, printable CV showcasing my professional experience, education, skills, and key projects."
+          tech={["React", "TypeScript", "Tailwind CSS", "Vite"]}
+          icon={FileText}
+          link="/cv"
+          buttonText="View CV"
+        />
       </div>
     </div>
   );
@@ -50,6 +60,7 @@ interface ProjectCardProps {
   tech: string[];
   icon: React.ComponentType<{ className?: string }>;
   link: string;
+  buttonText?: string;
 }
 
 function ProjectCard({
@@ -58,6 +69,7 @@ function ProjectCard({
   tech,
   icon: Icon,
   link,
+  buttonText,
 }: ProjectCardProps) {
   return (
     <Card className="flex flex-col transition-all hover:shadow-lg">
@@ -83,7 +95,7 @@ function ProjectCard({
       <CardFooter>
         <Button asChild className="w-full">
           <Link href={link}>
-            View Project
+            {buttonText || "View Project"}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
