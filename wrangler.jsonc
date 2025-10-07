@@ -1,0 +1,13 @@
+{
+  "name": "portfolio",
+  "compatibility_date": "2025-10-07",
+  "pages_build_output_dir": "dist",
+  "env": {
+    "production": {
+      "vars": {
+        "VITE_TASK_API_URL": "http://localhost:5000",
+        "VITE_CLAI_API_URL": "http://localhost:3500"
+      }
+    }
+  }
+}
