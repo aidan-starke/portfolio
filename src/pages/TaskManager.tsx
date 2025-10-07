@@ -44,8 +44,7 @@ export default function TaskManager() {
   const [updateField, setUpdateField] = useState("");
   const [updatePriority, setUpdatePriority] = useState<TaskPriority>("Medium");
 
-  // Search/filter state
-  const [searchTerm, setSearchTerm] = useState("");
+  // filter state
   const [filterPriority, setFilterPriority] = useState<TaskPriority>("Low");
 
   const outputEndRef = useRef<HTMLDivElement>(null);
@@ -68,13 +67,14 @@ export default function TaskManager() {
 
   const createTaskMutation = useMutation({
     mutationFn: () => {
-      // Parse DD-MM-YY format to Date (UTC)
+      // Parse DD-MM-YYYY format to Date (UTC)
       let dueDate: Date | undefined;
       if (taskForm.dueDate) {
         const [day, month, year] = taskForm.dueDate.split("-");
         if (day && month && year) {
-          const fullYear = parseInt(year) + 2000; // Convert YY to YYYY
-          dueDate = new Date(Date.UTC(fullYear, parseInt(month) - 1, parseInt(day)));
+          dueDate = new Date(
+            Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day))
+          );
         }
       }
 
@@ -292,7 +292,13 @@ export default function TaskManager() {
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [promptState, menuIndex, taskForm.priority, updatePriority, filterPriority]);
+  }, [
+    promptState,
+    menuIndex,
+    taskForm.priority,
+    updatePriority,
+    filterPriority,
+  ]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -327,7 +333,7 @@ export default function TaskManager() {
         setTaskForm({ ...taskForm, tags: input });
         if (input) addOutput(input);
         addOutput("");
-        addOutput("Add Due Date (DD-MM-YY, press Enter to skip):");
+        addOutput("Add Due Date (DD-MM-YYYY, press Enter to skip):");
         setInput("");
         setPromptState({ type: "create-duedate" });
         break;
@@ -388,14 +394,22 @@ export default function TaskManager() {
             : input;
         setUpdateTaskId(updateId);
         addOutput("");
-        addOutput("What would you like to update? (title/description/priority/tags/duedate):");
+        addOutput(
+          "What would you like to update? (title/description/priority/tags/duedate):"
+        );
         setInput("");
         setPromptState({ type: "update-field" });
         break;
 
       case "update-field":
-        if (!["title", "description", "priority", "tags", "duedate"].includes(input.toLowerCase())) {
-          addOutput("[red]✗[/] Invalid field. Choose: title, description, priority, tags, or duedate");
+        if (
+          !["title", "description", "priority", "tags", "duedate"].includes(
+            input.toLowerCase()
+          )
+        ) {
+          addOutput(
+            "[red]✗[/] Invalid field. Choose: title, description, priority, tags, or duedate"
+          );
           addOutput("");
           resetToMenu();
           return;
@@ -429,7 +443,6 @@ export default function TaskManager() {
           return;
         }
         addOutput(input);
-        setSearchTerm(input);
         handleSearchTasks(input);
         setInput("");
         break;
@@ -617,22 +630,26 @@ export default function TaskManager() {
       } else if (field === "priority") {
         const validPriorities = ["low", "medium", "high", "critical"];
         if (!validPriorities.includes(value.toLowerCase())) {
-          addOutput("[red]✗[/] Invalid priority. Use: Low, Medium, High, or Critical");
+          addOutput(
+            "[red]✗[/] Invalid priority. Use: Low, Medium, High, or Critical"
+          );
           addOutput("");
           resetToMenu();
           return;
         }
-        updateData.priority = (value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()) as TaskPriority;
+        updateData.priority = (value.charAt(0).toUpperCase() +
+          value.slice(1).toLowerCase()) as TaskPriority;
       } else if (field === "tags") {
         updateData.tags = value ? value.split(",").map((t) => t.trim()) : [];
       } else if (field === "duedate") {
         if (value) {
           const [day, month, year] = value.split("-");
           if (day && month && year) {
-            const fullYear = parseInt(year) + 2000; // Convert YY to YYYY
-            updateData.dueDate = new Date(Date.UTC(fullYear, parseInt(month) - 1, parseInt(day)));
+            updateData.dueDate = new Date(
+              Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day))
+            );
           } else {
-            addOutput("[red]✗[/] Invalid date format. Use DD-MM-YY");
+            addOutput("[red]✗[/] Invalid date format. Use DD-MM-YYYY");
             addOutput("");
             resetToMenu();
             return;
@@ -650,7 +667,9 @@ export default function TaskManager() {
       resetToMenu();
     } catch (error) {
       addOutput("");
-      addOutput(`[red]✗[/] Error: ${error instanceof Error ? error.message : String(error)}`);
+      addOutput(
+        `[red]✗[/] Error: ${error instanceof Error ? error.message : String(error)}`
+      );
       addOutput("");
       resetToMenu();
     }
@@ -662,7 +681,8 @@ export default function TaskManager() {
       const filtered = tasks.filter(
         (task) =>
           task.title.toLowerCase().includes(term.toLowerCase()) ||
-          (task.description && task.description.toLowerCase().includes(term.toLowerCase()))
+          (task.description &&
+            task.description.toLowerCase().includes(term.toLowerCase()))
       );
 
       addOutput("");
@@ -680,7 +700,9 @@ export default function TaskManager() {
       resetToMenu();
     } catch (error) {
       addOutput("");
-      addOutput(`[red]✗[/] Error: ${error instanceof Error ? error.message : String(error)}`);
+      addOutput(
+        `[red]✗[/] Error: ${error instanceof Error ? error.message : String(error)}`
+      );
       addOutput("");
       resetToMenu();
     }
@@ -705,7 +727,9 @@ export default function TaskManager() {
       resetToMenu();
     } catch (error) {
       addOutput("");
-      addOutput(`[red]✗[/] Error: ${error instanceof Error ? error.message : String(error)}`);
+      addOutput(
+        `[red]✗[/] Error: ${error instanceof Error ? error.message : String(error)}`
+      );
       addOutput("");
       resetToMenu();
     }
