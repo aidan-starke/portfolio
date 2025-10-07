@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A React 19 + TypeScript portfolio web application that showcases two backend projects:
+A React 19 + TypeScript portfolio web application showcasing three main sections:
 
-- **TaskManager** - C#/.NET task management API (runs on `http://localhost:5000`)
-- **CLAI** - Rust/Axum chat interface with Claude AI (runs on `http://localhost:3500`)
+- **TaskManager** - Integration with C#/.NET task management API (runs on `http://localhost:5000`)
+- **CLAI** - Integration with Rust/Axum chat interface with Claude AI (runs on `http://localhost:3500`)
+- **CV** - Interactive, printable resume/CV component
 
 ## Development Commands
 
@@ -18,6 +19,9 @@ pnpm install
 # Start dev server (runs on http://localhost:5173)
 pnpm dev
 
+# Type-check code
+pnpm typecheck
+
 # Type-check and build for production
 pnpm build
 
@@ -26,6 +30,9 @@ pnpm preview
 
 # Lint code
 pnpm lint
+
+# Format code with Prettier (includes Tailwind class sorting)
+pnpm format
 ```
 
 ## Environment Variables
@@ -78,6 +85,7 @@ Routes:
 - `/` - Home page
 - `/tasks` - TaskManager interface
 - `/chat` - CLAI chat interface
+- `/cv` - Interactive CV/resume
 
 ### Component Organization
 
@@ -85,17 +93,26 @@ Routes:
 components/
 ├── layout/       # Layout components (header, navigation)
 ├── taskmanager/  # TaskManager-specific UI components
-└── clai/         # CLAI chat-specific UI components
+├── clai/         # CLAI chat-specific UI components
+├── cv/           # CV components (sidebar, main sections)
+│   ├── sidebar/  # Sidebar: header, contact, education, skills
+│   └── main/     # Main: about, work experience, projects, references
+└── ui/           # shadcn/ui components (button, card, etc.)
 ```
 
-Each feature area (TaskManager, CLAI) has dedicated components in subdirectories.
+Each feature area has dedicated components. CV components maintain a two-panel layout structure.
 
 ## Key Technical Details
 
 - **Build tool**: Vite with React plugin and Tailwind CSS v4
 - **TypeScript**: Project references architecture (tsconfig.app.json, tsconfig.node.json)
 - **ESLint**: Flat config with TypeScript, React Hooks, and React Refresh plugins
-- **Styling**: Tailwind CSS v4 (configured via `@tailwindcss/vite` plugin)
+- **Styling**:
+  - Tailwind CSS v4 (configured via `@tailwindcss/vite` plugin)
+  - shadcn/ui components for consistent UI
+  - Montserrat font family (Google Fonts)
+- **Path aliases**: `@/*` maps to `./src/*` (configured in vite.config.ts and tsconfig)
+- **Code formatting**: Prettier with `prettier-plugin-tailwindcss` for automatic class sorting
 
 ## Backend API Integration
 
@@ -115,10 +132,26 @@ Each feature area (TaskManager, CLAI) has dedicated components in subdirectories
 - Message sending with response handling
 - See `src/api/claiClient.ts` for full API surface
 
+## CV/Resume Section
+
+The `/cv` route displays an interactive, printable CV with a two-panel layout:
+
+- **Sidebar** (left, dark background): Header, contact info, education, skills
+- **Main** (right, light background): About, work experience, projects, references
+
+**Print/PDF Support:**
+- Print styles in `src/index.css` preserve the two-panel layout for A4 PDFs
+- Use Ctrl+P/Cmd+P to print or save as PDF
+- Navigation and non-CV elements are hidden when printing
+- Page margins set to 0 for edge-to-edge printing
+
 ## Deployment
 
-Designed for Cloudflare Pages deployment:
+Designed for Cloudflare Pages deployment via GitHub Actions:
 
-- Static site generation via Vite
-- Environment variables set in Cloudflare dashboard
-- No server-side rendering or API routes required (backends run separately)
+- **Build command**: `pnpm build`
+- **Output directory**: `dist`
+- **GitHub workflow**: `.github/workflows/deploy.yml` automates deployment on push to `main`
+- **Required secrets**: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+- **Environment variables**: Set in Cloudflare dashboard (VITE_TASK_API_URL, VITE_CLAI_API_URL)
+- See `DEPLOYMENT.md` for full setup guide including CORS configuration
