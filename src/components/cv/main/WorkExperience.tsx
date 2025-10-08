@@ -1,5 +1,5 @@
-import { BulletList } from "@/components/cv/bullet-list";
-import { SectionHeading } from "./section-heading";
+import { BulletList } from "@/components/cv/BulletList";
+import { SectionHeading } from "./SectionHeading";
 
 export function WorkExperience() {
   return (

@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
-import { BulletList } from "@/components/cv/bullet-list";
-import { SectionHeading } from "./section-heading";
-import { Link } from "@/components/cv/link";
+import { BulletList } from "@/components/cv/BulletList";
+import { SectionHeading } from "./SectionHeading";
+import { Link } from "@/components/cv/Link";
 
 export function KeyProjects() {
   return (

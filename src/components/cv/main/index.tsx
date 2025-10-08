@@ -1,7 +1,7 @@
-import { AboutMe } from "./about-me";
-import { WorkExperience } from "./work-experience";
-import { KeyProjects } from "./key-projects";
-import { References } from "./references";
+import { AboutMe } from "./AboutMe";
+import { WorkExperience } from "./WorkExperience";
+import { KeyProjects } from "./KeyProjects";
+import { References } from "./References";
 
 export function Main() {
   return (

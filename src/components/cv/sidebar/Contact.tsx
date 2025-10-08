@@ -1,6 +1,6 @@
 import { Mail, Phone, Linkedin, Github, MapPin } from "lucide-react";
-import { SectionHeading } from "./section-heading";
-import { Link } from "@/components/cv/link";
+import { SectionHeading } from "./SectionHeading";
+import { Link } from "@/components/cv/Link";
 
 export function Contact() {
   return (

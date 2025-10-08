@@ -1,7 +1,7 @@
-import { Header } from "./header";
-import { Contact } from "./contact";
-import { Education } from "./education";
-import { Skills } from "./skills";
+import { Header } from "./Header";
+import { Contact } from "./Contact";
+import { Education } from "./Education";
+import { Skills } from "./Skills";
 
 export function Sidebar() {
   return (

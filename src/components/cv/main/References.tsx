@@ -1,5 +1,5 @@
-import { Link } from "@/components/cv/link";
-import { SectionHeading } from "./section-heading";
+import { Link } from "@/components/cv/Link";
+import { SectionHeading } from "./SectionHeading";
 import { Mail, Phone } from "lucide-react";
 
 export function References() {
