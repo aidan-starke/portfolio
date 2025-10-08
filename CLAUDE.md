@@ -140,6 +140,7 @@ The `/cv` route displays an interactive, printable CV with a two-panel layout:
 - **Main** (right, light background): About, work experience, projects, references
 
 **Print/PDF Support:**
+
 - Print styles in `src/index.css` preserve the two-panel layout for A4 PDFs
 - Use Ctrl+P/Cmd+P to print or save as PDF
 - Navigation and non-CV elements are hidden when printing

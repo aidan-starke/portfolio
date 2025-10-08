@@ -1,7 +1,21 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { taskApi, type TaskPriority } from "@/api/taskManagerClient";
 import { Terminal, ChevronRight } from "lucide-react";
+import { PrioritySelector } from "@/components/taskmanager/PrioritySelector";
+import { useTaskMutations } from "@/hooks/useTaskMutations";
+import {
+  TASK_PRIORITIES,
+  TASK_DETAIL_WIDTH,
+  MENU_OPTIONS,
+  UPDATABLE_FIELDS,
+  type UpdatableField,
+} from "@/lib/taskConstants";
+import {
+  parseDateFromDDMMYYYY,
+  parseTaskIdOrIndex,
+  navigatePriorities,
+} from "@/lib/taskUtils";
 
 type PromptState =
   | { type: "menu" }
@@ -50,7 +64,7 @@ export default function TaskManager() {
   const outputEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const queryClient = useQueryClient();
+  const mutations = useTaskMutations();
 
   const { data: tasks = [], refetch } = useQuery({
     queryKey: ["tasks"],
@@ -65,20 +79,11 @@ export default function TaskManager() {
     return map;
   }, [tasks]);
 
-  const createTaskMutation = useMutation({
-    mutationFn: () => {
-      // Parse DD-MM-YYYY format to Date (UTC)
-      let dueDate: Date | undefined;
-      if (taskForm.dueDate) {
-        const [day, month, year] = taskForm.dueDate.split("-");
-        if (day && month && year) {
-          dueDate = new Date(
-            Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day))
-          );
-        }
-      }
+  const handleCreateTask = () => {
+    const dueDate = parseDateFromDDMMYYYY(taskForm.dueDate);
 
-      return taskApi.createTask({
+    mutations.createTask(
+      {
         title: taskForm.title,
         priority: taskForm.priority,
         description: taskForm.description || undefined,
@@ -86,59 +91,64 @@ export default function TaskManager() {
           ? taskForm.tags.split(",").map((t) => t.trim())
           : [],
         dueDate,
-      });
-    },
-    onSuccess: (id) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      addOutput("");
-      addOutput(`[green]✓[/] Task created with ID: ${id}`);
-      addOutput("");
-      resetToMenu();
-    },
-    onError: (error) => {
-      addOutput("");
-      addOutput(`[red]✗[/] Error: ${error.message}`);
-      addOutput("");
-      resetToMenu();
-    },
-  });
+      },
+      {
+        onSuccess: (id) => {
+          addOutput("");
+          addOutput(`[green]✓[/] Task created with ID: ${id}`);
+          addOutput("");
+          resetToMenu();
+        },
+        onError: (error) => {
+          addOutput("");
+          addOutput(`[red]✗[/] Error: ${error.message}`);
+          addOutput("");
+          resetToMenu();
+        },
+      }
+    );
+  };
 
-  const completeTaskMutation = useMutation({
-    mutationFn: ({ id, isCompleted }: { id: string; isCompleted: boolean }) =>
-      taskApi.completeTask(id, isCompleted),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      addOutput("");
-      addOutput(variables.isCompleted
-        ? "[green]✓[/] Task marked as completed."
-        : "[green]✓[/] Task marked as incomplete.");
-      addOutput("");
-      resetToMenu();
-    },
-    onError: (error) => {
-      addOutput("");
-      addOutput(`[red]✗[/] Error: ${error.message}`);
-      addOutput("");
-      resetToMenu();
-    },
-  });
+  const handleCompleteTaskMutation = (id: string, isCompleted: boolean) => {
+    mutations.completeTask(
+      { id, isCompleted },
+      {
+        onSuccess: (variables) => {
+          addOutput("");
+          addOutput(
+            variables.isCompleted
+              ? "[green]✓[/] Task marked as completed."
+              : "[green]✓[/] Task marked as incomplete."
+          );
+          addOutput("");
+          resetToMenu();
+        },
+        onError: (error) => {
+          addOutput("");
+          addOutput(`[red]✗[/] Error: ${error.message}`);
+          addOutput("");
+          resetToMenu();
+        },
+      }
+    );
+  };
 
-  const deleteTaskMutation = useMutation({
-    mutationFn: (id: string) => taskApi.deleteTask(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      addOutput("");
-      addOutput("[green]✓[/] Task deleted successfully.");
-      addOutput("");
-      resetToMenu();
-    },
-    onError: (error) => {
-      addOutput("");
-      addOutput(`[red]✗[/] Error: ${error.message}`);
-      addOutput("");
-      resetToMenu();
-    },
-  });
+  const handleDeleteTaskMutation = (id: string) => {
+    mutations.deleteTask(id, {
+      onSuccess: () => {
+        addOutput("");
+        addOutput("[green]✓[/] Task deleted successfully.");
+        addOutput("");
+        resetToMenu();
+      },
+      onError: (error) => {
+        addOutput("");
+        addOutput(`[red]✗[/] Error: ${error.message}`);
+        addOutput("");
+        resetToMenu();
+      },
+    });
+  };
 
   useEffect(() => {
     outputEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -166,52 +176,6 @@ export default function TaskManager() {
     addOutput("What would you like to do?");
   };
 
-  const menuOptions = [
-    "Create Task",
-    "List All Tasks",
-    "View Task by ID",
-    "Complete Task",
-    "Update Task",
-    "Delete Task",
-    "Search Tasks",
-    "Filter Tasks",
-    "Clear",
-  ];
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (promptState.type === "menu") {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setMenuIndex((prev) => (prev + 1) % menuOptions.length);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setMenuIndex(
-          (prev) => (prev - 1 + menuOptions.length) % menuOptions.length
-        );
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        handleMenuSelect(menuOptions[menuIndex]);
-      }
-    } else if (promptState.type === "create-priority") {
-      const priorities: TaskPriority[] = ["Low", "Medium", "High", "Critical"];
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault();
-        const currentIdx = priorities.indexOf(taskForm.priority);
-        const newIdx =
-          e.key === "ArrowDown"
-            ? (currentIdx + 1) % priorities.length
-            : (currentIdx - 1 + priorities.length) % priorities.length;
-        setTaskForm({ ...taskForm, priority: priorities[newIdx] });
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        addOutput(taskForm.priority);
-        addOutput("");
-        addOutput("Add tags? (comma-separated, press Enter to skip):");
-        setPromptState({ type: "create-tags" });
-      }
-    }
-  };
-
   // Add global keyboard handler
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -228,31 +192,26 @@ export default function TaskManager() {
       if (promptState.type === "menu") {
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          setMenuIndex((prev) => (prev + 1) % menuOptions.length);
+          setMenuIndex((prev) => (prev + 1) % MENU_OPTIONS.length);
         } else if (e.key === "ArrowUp") {
           e.preventDefault();
           setMenuIndex(
-            (prev) => (prev - 1 + menuOptions.length) % menuOptions.length
+            (prev) => (prev - 1 + MENU_OPTIONS.length) % MENU_OPTIONS.length
           );
         } else if (e.key === "Enter") {
           e.preventDefault();
-          handleMenuSelect(menuOptions[menuIndex]);
+          handleMenuSelect(MENU_OPTIONS[menuIndex]);
         }
       } else if (promptState.type === "create-priority") {
-        const priorities: TaskPriority[] = [
-          "Low",
-          "Medium",
-          "High",
-          "Critical",
-        ];
         if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           e.preventDefault();
-          const currentIdx = priorities.indexOf(taskForm.priority);
-          const newIdx =
-            e.key === "ArrowDown"
-              ? (currentIdx + 1) % priorities.length
-              : (currentIdx - 1 + priorities.length) % priorities.length;
-          setTaskForm({ ...taskForm, priority: priorities[newIdx] });
+          const direction = e.key === "ArrowDown" ? "down" : "up";
+          const newPriority = navigatePriorities(
+            TASK_PRIORITIES,
+            taskForm.priority,
+            direction
+          );
+          setTaskForm({ ...taskForm, priority: newPriority });
         } else if (e.key === "Enter") {
           e.preventDefault();
           addOutput(taskForm.priority);
@@ -261,40 +220,30 @@ export default function TaskManager() {
           setPromptState({ type: "create-tags" });
         }
       } else if (promptState.type === "update-priority") {
-        const priorities: TaskPriority[] = [
-          "Low",
-          "Medium",
-          "High",
-          "Critical",
-        ];
         if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           e.preventDefault();
-          const currentIdx = priorities.indexOf(updatePriority);
-          const newIdx =
-            e.key === "ArrowDown"
-              ? (currentIdx + 1) % priorities.length
-              : (currentIdx - 1 + priorities.length) % priorities.length;
-          setUpdatePriority(priorities[newIdx]);
+          const direction = e.key === "ArrowDown" ? "down" : "up";
+          const newPriority = navigatePriorities(
+            TASK_PRIORITIES,
+            updatePriority,
+            direction
+          );
+          setUpdatePriority(newPriority);
         } else if (e.key === "Enter") {
           e.preventDefault();
           addOutput(updatePriority);
           handleUpdateTask(updateTaskId, updateField, updatePriority);
         }
       } else if (promptState.type === "filter-priority") {
-        const priorities: TaskPriority[] = [
-          "Low",
-          "Medium",
-          "High",
-          "Critical",
-        ];
         if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           e.preventDefault();
-          const currentIdx = priorities.indexOf(filterPriority);
-          const newIdx =
-            e.key === "ArrowDown"
-              ? (currentIdx + 1) % priorities.length
-              : (currentIdx - 1 + priorities.length) % priorities.length;
-          setFilterPriority(priorities[newIdx]);
+          const direction = e.key === "ArrowDown" ? "down" : "up";
+          const newPriority = navigatePriorities(
+            TASK_PRIORITIES,
+            filterPriority,
+            direction
+          );
+          setFilterPriority(newPriority);
         } else if (e.key === "Enter") {
           e.preventDefault();
           addOutput(filterPriority);
@@ -357,7 +306,7 @@ export default function TaskManager() {
         addOutput("");
         addOutput("Creating task...");
         setInput("");
-        createTaskMutation.mutate();
+        handleCreateTask();
         break;
 
       case "view-id":
@@ -369,13 +318,7 @@ export default function TaskManager() {
           return;
         }
         addOutput(input);
-        // Check if input is a number (index) or UUID
-        const numericInput = parseInt(input);
-        const taskId =
-          !isNaN(numericInput) && taskIndexMap[numericInput]
-            ? taskIndexMap[numericInput]
-            : input;
-        handleViewTask(taskId);
+        handleViewTask(parseTaskIdOrIndex(input, taskIndexMap));
         setInput("");
         break;
 
@@ -400,12 +343,7 @@ export default function TaskManager() {
           return;
         }
         addOutput(input);
-        const updateNumeric = parseInt(input);
-        const updateId =
-          !isNaN(updateNumeric) && taskIndexMap[updateNumeric]
-            ? taskIndexMap[updateNumeric]
-            : input;
-        setUpdateTaskId(updateId);
+        setUpdateTaskId(parseTaskIdOrIndex(input, taskIndexMap));
         addOutput("");
         addOutput(
           "What would you like to update? (title/description/priority/tags/duedate):"
@@ -415,13 +353,9 @@ export default function TaskManager() {
         break;
 
       case "update-field":
-        if (
-          !["title", "description", "priority", "tags", "duedate"].includes(
-            input.toLowerCase()
-          )
-        ) {
+        if (!UPDATABLE_FIELDS.includes(input.toLowerCase() as UpdatableField)) {
           addOutput(
-            "[red]✗[/] Invalid field. Choose: title, description, priority, tags, or duedate"
+            `[red]✗[/] Invalid field. Choose: ${UPDATABLE_FIELDS.join(", ")}`
           );
           addOutput("");
           resetToMenu();
@@ -464,7 +398,7 @@ export default function TaskManager() {
 
   const handleMenuSelect = (choice: string) => {
     // Clear current menu display
-    setOutput((prev) => prev.slice(0, -menuOptions.length - 1));
+    setOutput((prev) => prev.slice(0, -MENU_OPTIONS.length - 1));
     addOutput(`> ${choice}`);
     addOutput("");
 
@@ -546,10 +480,9 @@ export default function TaskManager() {
   const handleViewTask = async (id: string) => {
     try {
       const task = await taskApi.getTask(id);
-      const width = 69;
 
       const pad = (text: string, extraLength = 0) => {
-        const remaining = width - text.length + extraLength;
+        const remaining = TASK_DETAIL_WIDTH - text.length + extraLength;
         return text + "\u00A0".repeat(Math.max(0, remaining));
       };
 
@@ -609,7 +542,7 @@ export default function TaskManager() {
     const task = tasks[taskIdx];
     addOutput("");
     // Toggle completion status
-    completeTaskMutation.mutate({ id: task.id, isCompleted: !task.isCompleted });
+    handleCompleteTaskMutation(task.id, !task.isCompleted);
   };
 
   const handleDeleteTask = (idx: number) => {
@@ -622,7 +555,7 @@ export default function TaskManager() {
       return;
     }
     addOutput("");
-    deleteTaskMutation.mutate(tasks[taskIdx].id);
+    handleDeleteTaskMutation(tasks[taskIdx].id);
   };
 
   const handleUpdateTask = async (id: string, field: string, value: string) => {
@@ -630,18 +563,24 @@ export default function TaskManager() {
       // Get the existing task first
       const task = await taskApi.getTask(id);
 
-      const updateData: any = {
+      const updateData: {
+        title: string;
+        description?: string;
+        priority: TaskPriority;
+        tags: string[];
+        dueDate?: Date;
+      } = {
         title: task.title,
-        description: task.description,
+        description: task.description || undefined,
         priority: task.priority,
         tags: task.tags,
-        dueDate: task.dueDate,
+        dueDate: task.dueDate || undefined,
       };
 
       if (field === "title") {
         updateData.title = value;
       } else if (field === "description") {
-        updateData.description = value || null;
+        updateData.description = value || undefined;
       } else if (field === "priority") {
         const validPriorities = ["low", "medium", "high", "critical"];
         if (!validPriorities.includes(value.toLowerCase())) {
@@ -658,28 +597,36 @@ export default function TaskManager() {
         updateData.tags = value ? value.split(",").map((t) => t.trim()) : [];
       } else if (field === "duedate") {
         if (value) {
-          const [day, month, year] = value.split("-");
-          if (day && month && year) {
-            updateData.dueDate = new Date(
-              Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day))
-            );
-          } else {
+          const parsedDate = parseDateFromDDMMYYYY(value);
+          if (!parsedDate) {
             addOutput("[red]✗[/] Invalid date format. Use DD-MM-YYYY");
             addOutput("");
             resetToMenu();
             return;
           }
+          updateData.dueDate = parsedDate;
         } else {
-          updateData.dueDate = null;
+          updateData.dueDate = undefined;
         }
       }
 
-      await taskApi.updateTask(id, updateData);
-      await queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      addOutput("");
-      addOutput("[green]✓[/] Task updated successfully.");
-      addOutput("");
-      resetToMenu();
+      mutations.updateTask(
+        { id, data: updateData },
+        {
+          onSuccess: () => {
+            addOutput("");
+            addOutput("[green]✓[/] Task updated successfully.");
+            addOutput("");
+            resetToMenu();
+          },
+          onError: (error) => {
+            addOutput("");
+            addOutput(`[red]✗[/] Error: ${error.message}`);
+            addOutput("");
+            resetToMenu();
+          },
+        }
+      );
     } catch (error) {
       addOutput("");
       addOutput(
@@ -818,7 +765,7 @@ export default function TaskManager() {
           {/* Menu Selection */}
           {promptState.type === "menu" && (
             <div className="mt-2">
-              {menuOptions.map((option, idx) => (
+              {MENU_OPTIONS.map((option, idx) => (
                 <div
                   key={option}
                   className={
@@ -835,56 +782,17 @@ export default function TaskManager() {
 
           {/* Priority Selection */}
           {promptState.type === "create-priority" && (
-            <div className="mt-2">
-              {(["Low", "Medium", "High", "Critical"] as const).map((p) => (
-                <div
-                  key={p}
-                  className={
-                    p === taskForm.priority
-                      ? "bg-green-500 pl-2 text-black"
-                      : "pl-2 text-gray-400"
-                  }
-                >
-                  {p === taskForm.priority ? ">" : " "} {p}
-                </div>
-              ))}
-            </div>
+            <PrioritySelector selected={taskForm.priority} />
           )}
 
           {/* Update Priority Selection */}
           {promptState.type === "update-priority" && (
-            <div className="mt-2">
-              {(["Low", "Medium", "High", "Critical"] as const).map((p) => (
-                <div
-                  key={p}
-                  className={
-                    p === updatePriority
-                      ? "bg-green-500 pl-2 text-black"
-                      : "pl-2 text-gray-400"
-                  }
-                >
-                  {p === updatePriority ? ">" : " "} {p}
-                </div>
-              ))}
-            </div>
+            <PrioritySelector selected={updatePriority} />
           )}
 
           {/* Filter Priority Selection */}
           {promptState.type === "filter-priority" && (
-            <div className="mt-2">
-              {(["Low", "Medium", "High", "Critical"] as const).map((p) => (
-                <div
-                  key={p}
-                  className={
-                    p === filterPriority
-                      ? "bg-green-500 pl-2 text-black"
-                      : "pl-2 text-gray-400"
-                  }
-                >
-                  {p === filterPriority ? ">" : " "} {p}
-                </div>
-              ))}
-            </div>
+            <PrioritySelector selected={filterPriority} />
           )}
 
           {/* Command Input */}
@@ -899,7 +807,6 @@ export default function TaskManager() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
                   className="flex-1 bg-transparent font-mono text-green-400 outline-none"
                   autoFocus
                 />

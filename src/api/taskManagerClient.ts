@@ -89,31 +89,26 @@ export const taskApi = {
       priority: task.priority ? priorityMap[task.priority] : undefined,
     };
 
-    await fetchJson(
-      `${TASK_API}/api/tasks/${id}`,
-      z.void(),
-      {
-        method: "PUT",
-        body: JSON.stringify(requestBody),
-      }
-    );
-  },
-
-  completeTask: async (id: string, isCompleted: boolean): Promise<void> => {
-    await fetchJson(`${TASK_API}/api/tasks/${id}/complete`, z.void(), {
+    await fetchJson(`${TASK_API}/api/tasks/${id}`, z.void(), {
       method: "PUT",
-      body: JSON.stringify({ isCompleted }),
+      body: JSON.stringify(requestBody),
     });
   },
 
-  deleteTask: async (id: string): Promise<void> => {
+  completeTask: async (id: string, isCompleted: boolean): Promise<void> => {
     await fetchJson(
-      `${TASK_API}/api/tasks/${id}`,
+      `${TASK_API}/api/tasks/${id}/complete?isCompleted=${isCompleted}`,
       z.void(),
       {
-        method: "DELETE",
+        method: "PUT",
       }
     );
+  },
+
+  deleteTask: async (id: string): Promise<void> => {
+    await fetchJson(`${TASK_API}/api/tasks/${id}`, z.void(), {
+      method: "DELETE",
+    });
   },
 
   filterTasks: async (params: FilterTasksParams): Promise<TaskItem[]> => {

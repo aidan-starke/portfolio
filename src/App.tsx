@@ -6,14 +6,7 @@ import TaskManager from "./pages/TaskManager";
 import ClaiChat from "./pages/ClaiChat";
 import CV from "./pages/CV";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
-    },
-  },
-});
+export const queryClient = new QueryClient();
 
 function App() {
   return (
