@@ -18,7 +18,7 @@ export default function Navigation() {
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Code2 className="h-6 w-6" />
-            <span className="text-xl font-bold">Portfolio</span>
+            <span className="text-xl font-bold">Starke Dev</span>
           </Link>
           <div className="flex items-center gap-2">
             {links.map(({ path, label, icon: Icon }) => (
