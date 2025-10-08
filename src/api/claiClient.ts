@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { fetchJson } from "../lib/api-client";
 
-const CLAI_API = import.meta.env.VITE_CLAI_API_URL || "http://localhost:3500";
+const CLAI_API =
+  import.meta.env.VITE_CLAI_API_URL || "http://100.99.137.30:3500";
 
 export const SessionSchema = z.object({
   id: z.number().int(),
@@ -51,6 +52,7 @@ export type ChatResponse = z.infer<typeof ChatResponseSchema>;
 export type ClaudeModel = z.infer<typeof ClaudeModelSchema>;
 
 export const claiApi = {
+  // Session queries
   getSessions: async (): Promise<Session[]> => {
     return fetchJson(`${CLAI_API}/sessions`, SessionListSchema);
   },
@@ -59,24 +61,49 @@ export const claiApi = {
     return fetchJson(`${CLAI_API}/sessions/${id}`, SessionSchema);
   },
 
-  createSession: async (session: CreateSessionDto): Promise<Session> => {
+  getLastSession: async (): Promise<Session> => {
+    return fetchJson(`${CLAI_API}/sessions/last`, SessionSchema);
+  },
+
+  getSessionByName: async (name: string): Promise<Session> => {
+    return fetchJson(
+      `${CLAI_API}/sessions/by-name/${encodeURIComponent(name)}`,
+      SessionSchema
+    );
+  },
+
+  // Session mutations
+  createSession: async (session?: CreateSessionDto): Promise<Session> => {
+    const payload = session || {
+      name: `session_${Date.now()}`,
+      display_name: undefined,
+    };
     return fetchJson(`${CLAI_API}/sessions`, SessionSchema, {
       method: "POST",
-      body: JSON.stringify(session),
+      body: JSON.stringify(payload),
     });
   },
 
-  deleteSession: async (id: number): Promise<void> => {
-    return fetchJson(`${CLAI_API}/sessions/${id}`, z.void(), {
-      method: "DELETE",
+  saveSession: async (id: number, displayName: string): Promise<null> => {
+    return fetchJson(`${CLAI_API}/sessions/${id}`, z.null(), {
+      method: "PATCH",
+      body: JSON.stringify({ display_name: displayName }),
     });
   },
 
-  sendMessage: async (
-    sessionId: number,
-    message: string
-  ): Promise<ChatResponse> => {
+  deleteSession: async (name: string): Promise<null> => {
     return fetchJson(
+      `${CLAI_API}/sessions/by-name/${encodeURIComponent(name)}`,
+      z.null(),
+      {
+        method: "DELETE",
+      }
+    );
+  },
+
+  // Chat
+  sendMessage: async (sessionId: number, message: string): Promise<string> => {
+    const response = await fetchJson(
       `${CLAI_API}/sessions/${sessionId}/chat`,
       ChatResponseSchema,
       {
@@ -84,15 +111,18 @@ export const claiApi = {
         body: JSON.stringify({ message }),
       }
     );
+    return response.response;
   },
 
-  setRole: async (sessionId: number, role: string | null): Promise<void> => {
-    return fetchJson(`${CLAI_API}/sessions/${sessionId}/role`, z.void(), {
+  // Role management
+  setRole: async (sessionId: number, role: string | null): Promise<null> => {
+    return fetchJson(`${CLAI_API}/sessions/${sessionId}/role`, z.null(), {
       method: "PUT",
       body: JSON.stringify({ role }),
     });
   },
 
+  // Model management
   getModels: async (): Promise<ClaudeModel[]> => {
     const response = await fetchJson(
       `${CLAI_API}/models`,
@@ -101,8 +131,8 @@ export const claiApi = {
     return response.data;
   },
 
-  setModel: async (sessionId: number, model: string): Promise<void> => {
-    return fetchJson(`${CLAI_API}/sessions/${sessionId}/model`, z.void(), {
+  setModel: async (sessionId: number, model: string): Promise<null> => {
+    return fetchJson(`${CLAI_API}/sessions/${sessionId}/model`, z.null(), {
       method: "PUT",
       body: JSON.stringify({ model }),
     });
