@@ -46,13 +46,10 @@ export async function fetchJson<T>(
           response.headers.get("retry-after") ||
           response.headers.get("x-ratelimit-after");
         const retryAfter = parseInt(retryAfterHeader || "5", 10);
-        const message = await response.text();
+        await response.text(); // consume the response
 
         // Auto-retry if we haven't exceeded max retries
         if (retryCount < maxRetries) {
-          console.warn(
-            `Rate limited. Retrying after ${retryAfter}s (attempt ${retryCount + 1}/${maxRetries})`
-          );
           await new Promise((resolve) =>
             setTimeout(resolve, retryAfter * 1000)
           );
@@ -66,10 +63,19 @@ export async function fetchJson<T>(
         );
       }
 
-      // Handle other errors
-      const errorData = await response.json().catch(() => null);
+      // Handle other errors - try JSON first, then text
+      const responseText = await response.text();
+      let errorData = null;
+      try {
+        errorData = JSON.parse(responseText);
+      } catch {
+        // Error response is not JSON
+      }
+
       throw new ApiError(
-        errorData?.message || `HTTP ${response.status}: ${response.statusText}`,
+        errorData?.message ||
+          responseText ||
+          `HTTP ${response.status}: ${response.statusText}`,
         response.status,
         errorData
       );
@@ -92,6 +98,9 @@ export async function fetchJson<T>(
 
     return parsed.data;
   } catch (error) {
+    if (error instanceof ApiError || error instanceof RateLimitError) {
+      throw error;
+    }
     console.error("fetchJson error:", error);
     throw error;
   }
