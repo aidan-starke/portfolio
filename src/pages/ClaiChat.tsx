@@ -28,6 +28,7 @@ export default function ClaiChat() {
 
   const outputEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasInitialized = useRef(false);
 
   const session = useClaiSession();
 
@@ -41,6 +42,9 @@ export default function ClaiChat() {
 
   // Initialize session on mount
   useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
     const init = async () => {
       try {
         const sess = await session.initializeSession();
