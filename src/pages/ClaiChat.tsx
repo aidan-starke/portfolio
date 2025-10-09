@@ -371,11 +371,13 @@ export default function ClaiChat() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex items-center gap-3">
-        <Terminal className="h-8 w-8 text-cyan-500" />
-        <h1 className="text-3xl font-bold">CLAI Chat</h1>
+      <div className="mb-6">
+        <div className="flex items-center gap-3">
+          <Terminal className="h-6 w-6 text-cyan-500 sm:h-8 sm:w-8" />
+          <h1 className="text-2xl font-bold sm:text-3xl">CLAI Chat</h1>
+        </div>
         {session.currentSession && (
-          <div className="ml-auto flex items-center gap-4 text-sm text-gray-500">
+          <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-500">
             {session.currentSession.display_name && (
               <span>📝 {session.currentSession.display_name}</span>
             )}
@@ -413,7 +415,7 @@ export default function ClaiChat() {
         </div>
 
         {/* Terminal Output */}
-        <div className="h-[600px] overflow-y-auto p-4 font-mono text-sm">
+        <div className="h-[400px] overflow-y-auto p-4 font-mono text-sm sm:h-[500px] md:h-[600px]">
           {output.map((line, idx) => (
             <div key={idx} className={formatOutputLine(line)}>
               {line.text || "\u00A0"}

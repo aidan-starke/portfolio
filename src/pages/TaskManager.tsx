@@ -733,8 +733,8 @@ export default function TaskManager() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex items-center gap-3">
-        <Terminal className="h-8 w-8 text-green-500" />
-        <h1 className="text-3xl font-bold">TaskManager CLI</h1>
+        <Terminal className="h-6 w-6 text-green-500 sm:h-8 sm:w-8" />
+        <h1 className="text-2xl font-bold sm:text-3xl">TaskManager CLI</h1>
       </div>
 
       <p className="mb-6 text-sm text-gray-400">
@@ -766,7 +766,7 @@ export default function TaskManager() {
         </div>
 
         {/* Terminal Output */}
-        <div className="h-[600px] overflow-y-auto p-4 font-mono text-sm">
+        <div className="h-[400px] overflow-y-auto p-4 font-mono text-sm sm:h-[500px] md:h-[600px]">
           {output.map((line, idx) => {
             const { formatted, className } = formatLine(line);
             return (
@@ -782,10 +782,15 @@ export default function TaskManager() {
               {MENU_OPTIONS.map((option, idx) => (
                 <div
                   key={option}
+                  onClick={() => {
+                    setMenuIndex(idx);
+                    handleMenuSelect(option);
+                  }}
+                  onMouseEnter={() => setMenuIndex(idx)}
                   className={
                     idx === menuIndex
-                      ? "bg-green-500 pl-2 text-black"
-                      : "pl-2 text-gray-400"
+                      ? "cursor-pointer bg-green-500 pl-2 text-black"
+                      : "cursor-pointer pl-2 text-gray-400 hover:bg-green-500 hover:text-black"
                   }
                 >
                   {idx === menuIndex ? ">" : " "} {option}
@@ -796,17 +801,43 @@ export default function TaskManager() {
 
           {/* Priority Selection */}
           {promptState.type === "create-priority" && (
-            <PrioritySelector selected={taskForm.priority} />
+            <PrioritySelector
+              selected={taskForm.priority}
+              onSelect={(priority) => {
+                setTaskForm({ ...taskForm, priority });
+                addOutput(priority);
+                addOutput("");
+                addOutput("Add tags? (comma-separated, press Enter to skip):");
+                setPromptState({ type: "create-tags" });
+              }}
+              onHover={(priority) => setTaskForm({ ...taskForm, priority })}
+            />
           )}
 
           {/* Update Priority Selection */}
           {promptState.type === "update-priority" && (
-            <PrioritySelector selected={updatePriority} />
+            <PrioritySelector
+              selected={updatePriority}
+              onSelect={(priority) => {
+                setUpdatePriority(priority);
+                addOutput(priority);
+                handleUpdateTask(updateTaskId, updateField, priority);
+              }}
+              onHover={(priority) => setUpdatePriority(priority)}
+            />
           )}
 
           {/* Filter Priority Selection */}
           {promptState.type === "filter-priority" && (
-            <PrioritySelector selected={filterPriority} />
+            <PrioritySelector
+              selected={filterPriority}
+              onSelect={(priority) => {
+                setFilterPriority(priority);
+                addOutput(priority);
+                handleFilterTasks(priority);
+              }}
+              onHover={(priority) => setFilterPriority(priority)}
+            />
           )}
 
           {/* Command Input */}
@@ -833,9 +864,11 @@ export default function TaskManager() {
 
       <div className="mt-4 font-mono text-sm text-gray-500">
         {promptState.type === "menu" &&
-          "Use ↑↓ arrows to navigate, Enter to select"}
-        {promptState.type === "create-priority" &&
-          "Use ↑↓ arrows to select priority, Enter to confirm, Esc to cancel"}
+          "Use ↑↓ arrows to navigate, Enter to select, or tap/click an option"}
+        {(promptState.type === "create-priority" ||
+          promptState.type === "update-priority" ||
+          promptState.type === "filter-priority") &&
+          "Use ↑↓ arrows to select priority, Enter to confirm, tap/click to select, Esc to cancel"}
         {promptState.type !== "menu" &&
           promptState.type !== "create-priority" &&
           promptState.type !== "update-priority" &&

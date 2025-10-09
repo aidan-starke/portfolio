@@ -29,8 +29,8 @@ export default function Navigation() {
                 asChild
               >
                 <Link href={path}>
-                  <Icon className="mr-2 h-4 w-4" />
-                  {label}
+                  <Icon className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{label}</span>
                 </Link>
               </Button>
             ))}
