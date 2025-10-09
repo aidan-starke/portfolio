@@ -37,6 +37,7 @@ jobs:
         run: pnpm build
         env:
           VITE_TASK_API_URL: ${{ secrets.VITE_TASK_API_URL }}
+          VITE_CLAI_API_URL: ${{ secrets.VITE_CLAI_API_URL }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
