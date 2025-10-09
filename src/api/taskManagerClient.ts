@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { fetchJson } from "../lib/api-client";
+import { fetchJson } from "../lib/apiClient";
 
 const TASK_API =
   import.meta.env.VITE_TASK_API_URL || "http://100.99.137.30:5000";
