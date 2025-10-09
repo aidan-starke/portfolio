@@ -8,15 +8,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Code2, Terminal, FileText } from "lucide-react";
+import { ArrowRight, ListTodo, MessageSquare, FileText } from "lucide-react";
 
 export default function Home() {
   return (
     <div className="mx-auto max-w-6xl space-y-12">
       <div className="space-y-4 text-center">
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-          Welcome to My Portfolio
+          Aidan Starke - Software Engineer
         </h1>
+        <p className="text-muted-foreground mx-auto max-w-2xl text-lg">
+          Senior Full-Stack Developer with 4 years of experience specializing in
+          TypeScript, React, and modern backend technologies. I'm passionate
+          about clean architecture, rapid learning, and building intuitive
+          solutions to complex problems.
+        </p>
         <p className="text-muted-foreground mx-auto max-w-2xl text-lg">
           Explore my projects: a Task Manager built with C# and Clean
           Architecture, CLAI a Rust-powered CLI chat application, and my
@@ -29,7 +35,7 @@ export default function Home() {
           title="Task Manager"
           description="A comprehensive task management system built with C# and Clean Architecture, featuring CQRS, MediatR, and comprehensive testing."
           tech={["C#", "ASP.NET Core", "Clean Architecture", "CQRS", "xUnit"]}
-          icon={Code2}
+          icon={ListTodo}
           link="/tasks"
         />
 
@@ -37,7 +43,7 @@ export default function Home() {
           title="CLAI Chat"
           description="A command-line AI chat client built in Rust with a client-server architecture, featuring session management and Claude AI integration."
           tech={["Rust", "Axum", "SeaORM", "Tokio", "SQLite"]}
-          icon={Terminal}
+          icon={MessageSquare}
           link="/chat"
         />
 

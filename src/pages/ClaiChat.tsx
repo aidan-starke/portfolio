@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { Terminal, ChevronRight, Loader2 } from "lucide-react";
+import { Terminal, ChevronRight, Loader2, ExternalLink } from "lucide-react";
 import { useClaiSession } from "@/hooks/useClaiSession";
-import { CLAI_COMMANDS, COMMAND_HELP, DEFAULT_MODEL } from "@/lib/claiConstants";
+import {
+  CLAI_COMMANDS,
+  COMMAND_HELP,
+  DEFAULT_MODEL,
+} from "@/lib/claiConstants";
 
 type OutputLine = {
   text: string;
@@ -12,7 +16,10 @@ export default function ClaiChat() {
   const [output, setOutput] = useState<OutputLine[]>([
     { text: "CLAI - Command Line AI Interface v1.0.0", type: "system" },
     { text: "", type: "system" },
-    { text: "Type your message to chat, or use /help for commands", type: "info" },
+    {
+      text: "Type your message to chat, or use /help for commands",
+      type: "info",
+    },
     { text: "", type: "system" },
   ]);
   const [input, setInput] = useState("");
@@ -280,8 +287,7 @@ export default function ClaiChat() {
     if (!modelInput) {
       // Show current model and available models
       const models = await session.getModels();
-      const currentModel =
-        session.currentSession?.model || DEFAULT_MODEL;
+      const currentModel = session.currentSession?.model || DEFAULT_MODEL;
 
       addOutput({ text: "", type: "system" });
       addOutput({ text: `🤖 Current model: ${currentModel}`, type: "info" });
@@ -380,6 +386,20 @@ export default function ClaiChat() {
         )}
       </div>
 
+      <p className="mb-6 text-sm text-gray-400">
+        A Rust CLI for conversing with Claude AI. Features persistent sessions,
+        custom roles, model switching, and a RESTful API.{" "}
+        <a
+          href="https://github.com/aidan-starke/clai"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-cyan-500 hover:underline"
+        >
+          Read more
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      </p>
+
       {/* Terminal Window */}
       <div className="overflow-hidden rounded-lg border border-gray-800 bg-gray-950 shadow-2xl">
         {/* Terminal Header */}
@@ -443,7 +463,8 @@ export default function ClaiChat() {
       </div>
 
       <div className="mt-4 font-mono text-sm text-gray-500">
-        {session.currentSession?.model && `Model: ${session.currentSession.model}`}
+        {session.currentSession?.model &&
+          `Model: ${session.currentSession.model}`}
       </div>
     </div>
   );

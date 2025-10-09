@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { taskApi, type TaskPriority } from "@/api/taskManagerClient";
-import { Terminal, ChevronRight } from "lucide-react";
+import { Terminal, ChevronRight, ExternalLink } from "lucide-react";
 import { PrioritySelector } from "@/components/taskmanager/PrioritySelector";
 import { useTaskMutations } from "@/hooks/useTaskMutations";
 import {
@@ -736,6 +736,20 @@ export default function TaskManager() {
         <Terminal className="h-8 w-8 text-green-500" />
         <h1 className="text-3xl font-bold">TaskManager CLI</h1>
       </div>
+
+      <p className="mb-6 text-sm text-gray-400">
+        A CLI task manager built with C# and Clean Architecture. Features CRUD
+        operations, filtering, and export capabilities.{" "}
+        <a
+          href="https://github.com/aidan-starke/TaskManager"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-green-500 hover:underline"
+        >
+          Read more
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      </p>
 
       {/* Terminal Window */}
       <div className="overflow-hidden rounded-lg border border-gray-800 bg-gray-950 shadow-2xl">

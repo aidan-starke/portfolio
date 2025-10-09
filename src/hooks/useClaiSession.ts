@@ -24,7 +24,9 @@ export function useClaiSession() {
         return newSession;
       } catch (createErr) {
         const message =
-          createErr instanceof Error ? createErr.message : "Failed to initialize session";
+          createErr instanceof Error
+            ? createErr.message
+            : "Failed to initialize session";
         setError(message);
         throw createErr;
       }

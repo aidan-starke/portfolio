@@ -1,4 +1,4 @@
-import { Mail, Phone, Linkedin, Github, MapPin } from "lucide-react";
+import { Mail, Phone, Linkedin, Github, MapPin, Globe } from "lucide-react";
 import { SectionHeading } from "./SectionHeading";
 import { Link } from "@/components/cv/Link";
 
@@ -16,6 +16,11 @@ export function Contact() {
           icon={<Mail size={16} className="flex-shrink-0 text-blue-400" />}
           text="aidan@starkedev.net"
           href="mailto:aidan@starkedev.net"
+        />
+        <ContactItem
+          icon={<Globe size={16} className="flex-shrink-0 text-blue-400" />}
+          text="aidan.starkedev.net"
+          href="https://aidan.starkedev.net"
         />
         <ContactItem
           icon={<Linkedin size={16} className="flex-shrink-0 text-blue-400" />}
