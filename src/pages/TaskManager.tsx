@@ -731,7 +731,7 @@ export default function TaskManager() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-5xl">
       <div className="mb-6 flex items-center gap-3">
         <Terminal className="h-6 w-6 text-green-500 sm:h-8 sm:w-8" />
         <h1 className="text-2xl font-bold sm:text-3xl">TaskManager CLI</h1>
